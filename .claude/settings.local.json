@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python -c ' *)",
+      "Bash(pip install *)",
+      "WebFetch(domain:drive.google.com)",
+      "mcp__Claude_in_Chrome__tabs_context_mcp",
+      "Bash(git --version)",
+      "Bash(gh --version)"
+    ]
+  }
+}

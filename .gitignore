@@ -1,0 +1,12 @@
+# Backups
+*_BACKUP_*/
+*.backup
+
+# Sistema
+Thumbs.db
+.DS_Store
+desktop.ini
+
+# Editores
+.vscode/
+*.code-workspace
