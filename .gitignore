@@ -2,6 +2,9 @@
 *_BACKUP_*/
 *.backup
 
+# Scripts locales
+actualizar.bat
+
 # Sistema
 Thumbs.db
 .DS_Store
