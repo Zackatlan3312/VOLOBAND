@@ -129,3 +129,91 @@ fadeEls.forEach(el => {
   el.style.transition = 'opacity 0.7s ease, transform 0.7s ease';
   fadeObserver.observe(el);
 });
+
+// ══════════════════════════════════════════
+// CARTELERA — Próximas presentaciones
+// Para agregar un show, copia un bloque {} y
+// cambia los datos. Los eventos pasados se
+// ocultan solos.
+// ══════════════════════════════════════════
+const SHOWS = [
+  {
+    fecha: '2026-07-31T19:00:00',
+    titulo: 'Victor Meza — Tour 2026',
+    rol: 'Banda invitada · junto a Elefantes de Dalí',
+    lugar: 'Casa Efecto',
+    direccion: 'C. Mario Molina 23, Centro, Veracruz',
+    hora: '7:00 PM · Todas las edades',
+    boletos: 'https://passline.com'
+  },
+  // {
+  //   fecha: '2026-08-15T20:00:00',
+  //   titulo: 'Nombre del evento',
+  //   rol: 'Descripción corta',
+  //   lugar: 'Nombre del lugar',
+  //   direccion: 'Dirección, Ciudad',
+  //   hora: '8:00 PM',
+  //   boletos: ''   // deja vacío si no hay link
+  // },
+];
+
+const MESES = ['ENE','FEB','MAR','ABR','MAY','JUN','JUL','AGO','SEP','OCT','NOV','DIC'];
+
+function renderCartelera() {
+  const cont = document.getElementById('carteleraEvents');
+  if (!cont) return;
+
+  const ahora = new Date();
+  const proximos = SHOWS
+    .map(s => ({ ...s, date: new Date(s.fecha) }))
+    .filter(s => s.date > ahora)
+    .sort((a, b) => a.date - b.date);
+
+  if (proximos.length === 0) {
+    cont.innerHTML = `
+      <div class="cartelera-empty">
+        <strong>PRÓXIMAMENTE NUEVAS FECHAS</strong><br>
+        Síguenos en redes para no perderte ningún show.
+      </div>`;
+    return;
+  }
+
+  cont.innerHTML = proximos.map(s => {
+    const dias = Math.ceil((s.date - ahora) / 86400000);
+    const countdown = dias === 0 ? '¡ES HOY!' : dias === 1 ? '¡ES MAÑANA!' : `FALTAN ${dias} DÍAS`;
+    const boletosBtn = s.boletos
+      ? `<a href="${s.boletos}" target="_blank" class="evento-boletos">BOLETOS →</a>`
+      : '';
+    return `
+      <div class="evento-card">
+        <div class="evento-fecha">
+          <span class="evento-dia">${s.date.getDate()}</span>
+          <span class="evento-mes">${MESES[s.date.getMonth()]}</span>
+        </div>
+        <div class="evento-info">
+          <h3 class="evento-titulo">${s.titulo}</h3>
+          <p class="evento-rol">${s.rol}</p>
+          <p class="evento-lugar"><strong>${s.lugar}</strong> · ${s.direccion}</p>
+          <p class="evento-hora">${s.hora}</p>
+          <div class="evento-footer">
+            <span class="evento-countdown">${countdown}</span>
+            ${boletosBtn}
+          </div>
+        </div>
+      </div>`;
+  }).join('');
+
+  // Animación de entrada al hacer scroll
+  const cards = cont.querySelectorAll('.evento-card');
+  const obs = new IntersectionObserver(entries => {
+    entries.forEach((entry, i) => {
+      if (entry.isIntersecting) {
+        setTimeout(() => entry.target.classList.add('visible'), i * 140);
+        obs.unobserve(entry.target);
+      }
+    });
+  }, { threshold: 0.15 });
+  cards.forEach(c => obs.observe(c));
+}
+
+renderCartelera();

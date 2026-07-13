@@ -19,6 +19,7 @@
     <ul class="nav-links" id="navLinks">
       <li><a href="#banda">Banda</a></li>
       <li><a href="#musica">Música</a></li>
+      <li><a href="#cartelera">Cartelera</a></li>
       <li><a href="#videos">En Vivo</a></li>
       <li><a href="#logros">Logros</a></li>
       <li><a href="#contacto">Contacto</a></li>
@@ -171,52 +172,66 @@
     </div>
   </section>
 
+  <!-- CARTELERA -->
+  <section id="cartelera" class="section cartelera">
+    <h2 class="section-title cartelera-heading">CARTELERA</h2>
+    <p class="section-sub cartelera-sub">Próximas presentaciones</p>
+    <div class="cartelera-layout">
+      <div class="cartelera-poster">
+        <img src="assets/VOLO_Asset_43.jpg" alt="Victor Meza Tour 2026 — Casa Efecto, con La Voloband">
+      </div>
+      <div class="cartelera-events" id="carteleraEvents">
+        <!-- Los eventos se generan desde js/main.js -->
+      </div>
+    </div>
+  </section>
+
   <!-- VIDEOS EN VIVO -->
   <section id="videos" class="section videos">
     <h2 class="section-title">EN VIVO</h2>
     <p class="section-sub">Una selección de nuestras presentaciones más recientes</p>
     <div class="video-grid">
 
-      <!-- Video 1: minuto 1:43 – 2:05 -->
+      <!-- Video 1: Reforma 37 -->
       <div class="video-card">
         <div class="video-frame-wrap">
           <iframe
-            src="https://drive.google.com/file/d/1LNTu2yNKjtTfc_lET13HEcCAMSWZA0yY/preview"
+            src="https://drive.google.com/file/d/1Xzs-8iDS9mlGCXP3_M_eIt9bNCzmTCly/preview"
             allow="autoplay"
             allowfullscreen
             loading="lazy"
-            title="La Voloband en vivo #1">
+            title="La Voloband — Reforma 37 Food Park">
           </iframe>
         </div>
-        <p class="video-label">Presentación en Vivo</p>
+        <p class="video-label">Reforma 37 Food Park &amp; Drinks</p>
       </div>
 
-      <!-- Video 2 -->
+      <!-- Video 2: VeraBeat — Teatro Piano Bar -->
       <div class="video-card">
         <div class="video-frame-wrap">
           <iframe
-            src="https://drive.google.com/file/d/1zWGd6wAcodfdXY5jD5-Ir8fHhRP2d4uO/preview"
+            src="https://drive.google.com/file/d/1lVYFM1SJLh09Q97I2S3G-p-opqYaNc8c/preview"
             allow="autoplay"
             allowfullscreen
             loading="lazy"
-            title="La Voloband en vivo #2">
+            title="La Voloband — VeraBeat, Teatro Piano Bar">
           </iframe>
         </div>
-        <p class="video-label">Presentación en Vivo</p>
+        <p class="video-label">VeraBeat — Teatro Piano Bar</p>
       </div>
 
-      <!-- Video 3 -->
+      <!-- Video 3: show 27 junio -->
       <div class="video-card">
         <div class="video-frame-wrap">
           <iframe
-            src="https://drive.google.com/file/d/1NgVEgQdbjm8hPanQpXbiTTSFsxzU-Qjt/preview"
+            src="https://drive.google.com/file/d/19oSYp7rERpiqzelEAwp55FjufypwbTJF/preview"
             allow="autoplay"
             allowfullscreen
             loading="lazy"
-            title="La Voloband en vivo #3">
+            title="La Voloband en vivo — Veracruz">
           </iframe>
         </div>
-        <p class="video-label">Presentación en Vivo</p>
+        <p class="video-label">En Vivo — Veracruz</p>
       </div>
 
     </div>
@@ -226,14 +241,28 @@
   <section id="logros" class="section logros">
     <h2 class="section-title">LOGROS</h2>
     <div class="logros-layout">
-      <div class="logro-featured">
-        <div class="logro-icon">
-          <img src="assets/VOLO_Asset_20.png" alt="★">
+      <div class="logros-featured-row">
+        <div class="logro-featured">
+          <div class="logro-icon">
+            <img src="assets/VOLO_Asset_20.png" alt="★">
+          </div>
+          <h3>GANADORES</h3>
+          <p class="logro-event">Guerra de Bandas 2026</p>
+          <p class="logro-org">Casa Efecto — Puerto de Veracruz</p>
+          <p class="logro-detail">#1 de 17 bandas participantes</p>
         </div>
-        <h3>GANADORES</h3>
-        <p class="logro-event">Guerra de Bandas 2026</p>
-        <p class="logro-org">Casa Efecto — Puerto de Veracruz</p>
-        <p class="logro-detail">#1 de 17 bandas participantes</p>
+        <div class="logro-featured logro-featured--photo">
+          <img src="assets/VOLO_Asset_36.jpg" alt="La Voloband recibiendo el 1er lugar del VeraBeat" class="logro-photo">
+          <div class="logro-featured-body">
+            <div class="logro-icon">
+              <img src="assets/VOLO_Asset_20.png" alt="★">
+            </div>
+            <h3>GANADORES</h3>
+            <p class="logro-event">VeraBeat — Festival de Nuevas Bandas</p>
+            <p class="logro-org">Teatro Piano Bar — Veracruz</p>
+            <p class="logro-detail">1er lugar · Disco firmado</p>
+          </div>
+        </div>
       </div>
       <div class="logros-secondary">
         <div class="logro-card">
@@ -283,11 +312,21 @@
         <span>Plaza de los Valores</span>
         <span class="venue-hint">ver foto ↗</span>
       </button>
+      <button class="venue-item" data-popup="popup-tpb" aria-label="Ver Teatro Piano Bar">
+        <img src="assets/VOLO_Asset_20.png" alt="★" class="venue-star">
+        <span>Teatro Piano Bar</span>
+        <span class="venue-hint">ver foto ↗</span>
+      </button>
+      <button class="venue-item" data-popup="popup-r37" aria-label="Ver Reforma 37 Food Park">
+        <img src="assets/VOLO_Asset_20.png" alt="★" class="venue-star">
+        <span>Reforma 37 Food Park</span>
+        <span class="venue-hint">ver foto ↗</span>
+      </button>
     </div>
     <div class="donde-photos">
-      <img src="assets/VOLO_Asset_16.png" alt="Show">
-      <img src="assets/VOLO_Asset_12.png" alt="Show">
-      <img src="assets/VOLO_Asset_13.png" alt="Show">
+      <img src="assets/VOLO_Asset_40.jpg" alt="La Voloband en vivo">
+      <img src="assets/VOLO_Asset_41.jpg" alt="La Voloband en vivo">
+      <img src="assets/VOLO_Asset_42.jpg" alt="La Voloband en Reforma 37">
     </div>
   </section>
 
@@ -309,6 +348,16 @@
   <div class="popup" id="popup-plz" role="dialog" aria-label="Plaza de los Valores">
     <button class="popup-close" data-close="popup-plz" aria-label="Cerrar">✕</button>
     <img src="assets/VOLO_Asset_26.png" alt="Plaza de los Valores">
+  </div>
+  <div class="popup" id="popup-tpb" role="dialog" aria-label="Teatro Piano Bar">
+    <button class="popup-close" data-close="popup-tpb" aria-label="Cerrar">✕</button>
+    <img src="assets/VOLO_Asset_39.jpg" alt="La Voloband en Teatro Piano Bar">
+    <div class="popup-caption">📍 TEATRO PIANO BAR</div>
+  </div>
+  <div class="popup" id="popup-r37" role="dialog" aria-label="Reforma 37 Food Park">
+    <button class="popup-close" data-close="popup-r37" aria-label="Cerrar">✕</button>
+    <img src="assets/VOLO_Asset_38.jpg" alt="La Voloband en Reforma 37 Food Park">
+    <div class="popup-caption">📍 REFORMA 37 FOOD PARK &amp; DRINKS</div>
   </div>
 
   <!-- CONTÁCTANOS -->
