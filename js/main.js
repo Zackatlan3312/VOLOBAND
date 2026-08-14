@@ -30,7 +30,7 @@ document.querySelectorAll('.nav-links a').forEach(link => {
   });
 });
 
-// ── COUNTER ANIMATION (+2,000) ──
+// ── COUNTER ANIMATION (+4,000) ──
 function animateCounter(el, target, duration = 1800) {
   let start = 0;
   const step = Math.ceil(target / (duration / 16));
@@ -40,21 +40,15 @@ function animateCounter(el, target, duration = 1800) {
     if (start >= target) clearInterval(timer);
   }, 16);
 }
+
 const counterEl = document.getElementById('playCounter');
 if (counterEl) {
-  new IntersectionObserver(entries => {
-    if (entries[0].isIntersecting) {
-      animateCounter(counterEl, 2000);
-      entries[0].target._obs.disconnect();
-    }
-  }, { threshold: 0.4 }).observe(counterEl);
-  counterEl._obs = new IntersectionObserver(entries => {
-    if (entries[0].isIntersecting) {
-      animateCounter(counterEl, 2000);
-      counterEl._obs.disconnect();
-    }
+  const obs = new IntersectionObserver(entries => {
+    if (!entries[0].isIntersecting) return;
+    animateCounter(counterEl, 4000);
+    obs.disconnect();
   }, { threshold: 0.4 });
-  counterEl._obs.observe(counterEl);
+  obs.observe(counterEl);
 }
 
 // ── PRESENCIA CARDS ANIMATE IN ──
@@ -138,23 +132,30 @@ fadeEls.forEach(el => {
 // ══════════════════════════════════════════
 const SHOWS = [
   {
-    fecha: '2026-07-31T19:00:00',
-    titulo: 'Victor Meza — Tour 2026',
-    rol: 'Banda invitada · junto a Elefantes de Dalí',
-    lugar: 'Casa Efecto',
-    direccion: 'C. Mario Molina 23, Centro, Veracruz',
-    hora: '7:00 PM · Todas las edades',
-    boletos: 'https://passline.com'
+    fecha: '2026-08-23T17:00:00',
+    titulo: 'Open House',
+    rol: 'La Voloband en vivo',
+    lugar: 'Teatro Piano Bar',
+    direccion: 'Veracruz, Ver.',
+    hora: '5:00 PM · Cover $50 · Consumo mínimo recomendado $200',
+    flyer: 'assets/flyer-agosto23.jpg',
+    boletos: 'https://wa.me/522292708672?text=Hola!%20Quiero%20informaci%C3%B3n%20para%20el%20show%20del%2023%20de%20agosto%20en%20el%20Teatro%20Piano%20Bar',
+    boletosTexto: 'APARTAR POR WHATSAPP'
   },
-  // {
-  //   fecha: '2026-08-15T20:00:00',
-  //   titulo: 'Nombre del evento',
-  //   rol: 'Descripción corta',
-  //   lugar: 'Nombre del lugar',
-  //   direccion: 'Dirección, Ciudad',
-  //   hora: '8:00 PM',
-  //   boletos: ''   // deja vacío si no hay link
-  // },
+  {
+    fecha: '2026-10-24T18:00:00',
+    titulo: 'VOLOFEST 2026',
+    rol: 'Aniversario de la banda · Edición Halloween',
+    lugar: 'Jardín y Salón de Fiestas Las Garzas',
+    direccion: 'Hermenegildo Galeana 1028, El Coyol, Veracruz',
+    hora: '6:00 PM a 1:00 AM · Ven disfrazado',
+    flyer: 'assets/flyer-volofest.jpg',
+    boletos: 'https://volofest.lavoloband.com',
+    boletosTexto: 'VER EL EVENTO'
+  },
+  // Para agregar un show, copia un bloque {} y cambia los datos.
+  // Los eventos pasados desaparecen solos.
+  // "flyer" y "boletos" se pueden dejar vacíos ('').
 ];
 
 const MESES = ['ENE','FEB','MAR','ABR','MAY','JUN','JUL','AGO','SEP','OCT','NOV','DIC'];
@@ -181,26 +182,37 @@ function renderCartelera() {
   cont.innerHTML = proximos.map(s => {
     const dias = Math.ceil((s.date - ahora) / 86400000);
     const countdown = dias === 0 ? '¡ES HOY!' : dias === 1 ? '¡ES MAÑANA!' : `FALTAN ${dias} DÍAS`;
+
     const boletosBtn = s.boletos
-      ? `<a href="${s.boletos}" target="_blank" class="evento-boletos">BOLETOS →</a>`
+      ? `<a href="${s.boletos}" target="_blank" rel="noopener" class="evento-boletos">${s.boletosTexto || 'BOLETOS'} →</a>`
       : '';
+
+    const flyer = s.flyer
+      ? `<a class="evento-flyer" href="${s.flyer}" target="_blank" rel="noopener" aria-label="Ver el flyer de ${s.titulo}">
+           <img src="${s.flyer}" alt="Flyer — ${s.titulo}" loading="lazy">
+         </a>`
+      : '';
+
     return `
-      <div class="evento-card">
-        <div class="evento-fecha">
-          <span class="evento-dia">${s.date.getDate()}</span>
-          <span class="evento-mes">${MESES[s.date.getMonth()]}</span>
-        </div>
-        <div class="evento-info">
-          <h3 class="evento-titulo">${s.titulo}</h3>
-          <p class="evento-rol">${s.rol}</p>
-          <p class="evento-lugar"><strong>${s.lugar}</strong> · ${s.direccion}</p>
-          <p class="evento-hora">${s.hora}</p>
-          <div class="evento-footer">
-            <span class="evento-countdown">${countdown}</span>
-            ${boletosBtn}
+      <article class="evento-card${s.flyer ? ' evento-card--flyer' : ''}">
+        ${flyer}
+        <div class="evento-cuerpo">
+          <div class="evento-fecha">
+            <span class="evento-dia">${s.date.getDate()}</span>
+            <span class="evento-mes">${MESES[s.date.getMonth()]}</span>
+          </div>
+          <div class="evento-info">
+            <h3 class="evento-titulo">${s.titulo}</h3>
+            <p class="evento-rol">${s.rol}</p>
+            <p class="evento-lugar"><strong>${s.lugar}</strong> · ${s.direccion}</p>
+            <p class="evento-hora">${s.hora}</p>
+            <div class="evento-footer">
+              <span class="evento-countdown">${countdown}</span>
+              ${boletosBtn}
+            </div>
           </div>
         </div>
-      </div>`;
+      </article>`;
   }).join('');
 
   // Animación de entrada al hacer scroll
