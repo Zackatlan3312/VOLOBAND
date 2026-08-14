@@ -834,9 +834,69 @@ ul { list-style: none; }
 
 .prensa-nota a { color: var(--black); font-weight: bold; border-bottom: 2px solid var(--gold); }
 
+.contacto-sub {
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 0.9rem;
+  letter-spacing: 0.06em;
+  color: #b5b5b5;
+  margin: 10px 0 30px;
+}
+
 /* ══════════ SÍGUENOS ══════════ */
 
-.redes { background: var(--bg); }
+.redes {
+  position: relative;
+  overflow: hidden;
+  background: var(--black);
+  color: var(--white);
+}
+
+/* Capa de fondo: texto en contorno que se desliza */
+.redes-bg {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 2vw;
+  pointer-events: none;
+  user-select: none;
+  opacity: 0.14;
+  mask-image: radial-gradient(ellipse 78% 68% at 50% 50%, transparent 18%, #000 78%);
+  -webkit-mask-image: radial-gradient(ellipse 78% 68% at 50% 50%, transparent 18%, #000 78%);
+}
+
+.redes-bg-row {
+  display: flex;
+  white-space: nowrap;
+  animation: redesSlide 44s linear infinite;
+}
+
+.redes-bg-row.rev { animation-direction: reverse; }
+.redes-bg-row:nth-child(2) { animation-duration: 58s; }
+.redes-bg-row:nth-child(3) { animation-duration: 50s; }
+.redes-bg-row:nth-child(4) { animation-duration: 64s; }
+
+.redes-bg-row span {
+  font-family: Impact, 'Arial Narrow', Arial, sans-serif;
+  font-size: clamp(3rem, 8vw, 6.5rem);
+  line-height: 1;
+  letter-spacing: 0.03em;
+  padding-right: 0.4em;
+  color: transparent;
+  -webkit-text-stroke: 1.5px var(--gold);
+}
+
+@keyframes redesSlide {
+  from { transform: translateX(0); }
+  to   { transform: translateX(-50%); }
+}
+
+.redes-inner { position: relative; z-index: 1; }
+
+.redes-title { color: var(--white); }
+.redes-sub { color: #9a9a9a; }
 
 .canal-wa {
   display: flex;
@@ -845,14 +905,17 @@ ul { list-style: none; }
   max-width: 620px;
   margin: 44px auto 30px;
   padding: 20px 24px;
-  background: var(--black);
-  color: var(--white);
-  border: 2px solid var(--black);
+  background: #25D366;
+  color: var(--black);
+  border: 2px solid #25D366;
   text-align: left;
   transition: transform 0.28s ease, box-shadow 0.28s ease;
 }
 
-.canal-wa:hover { transform: translateY(-4px); box-shadow: 10px 10px 0 #25D366; }
+.canal-wa:hover {
+  transform: translateY(-4px);
+  box-shadow: 10px 10px 0 rgba(253,250,243,0.9);
+}
 
 .canal-ico {
   flex-shrink: 0;
@@ -860,8 +923,8 @@ ul { list-style: none; }
   height: 52px;
   display: grid;
   place-items: center;
-  background: #25D366;
-  color: var(--black);
+  background: var(--black);
+  color: #25D366;
 }
 
 .canal-txt { flex: 1; display: flex; flex-direction: column; gap: 3px; }
@@ -877,10 +940,10 @@ ul { list-style: none; }
   font-family: 'Courier New', Courier, monospace;
   font-size: 0.76rem;
   font-style: normal;
-  color: #b9b9b9;
+  color: #0f3d20;
 }
 
-.canal-arrow { font-size: 1.5rem; color: #25D366; transition: transform 0.28s ease; }
+.canal-arrow { font-size: 1.5rem; color: var(--black); transition: transform 0.28s ease; }
 .canal-wa:hover .canal-arrow { transform: translateX(6px); }
 
 .redes-grid {
@@ -897,9 +960,11 @@ ul { list-style: none; }
   align-items: center;
   gap: 7px;
   padding: 24px 14px 20px;
-  background: var(--white);
-  border: 2px solid var(--black);
-  transition: transform 0.28s ease, background 0.28s, color 0.28s;
+  background: rgba(253,250,243,0.04);
+  border: 2px solid rgba(253,250,243,0.22);
+  color: var(--white);
+  backdrop-filter: blur(2px);
+  transition: transform 0.28s ease, background 0.28s, border-color 0.28s, color 0.28s;
 }
 
 .red-card span {
@@ -912,14 +977,14 @@ ul { list-style: none; }
 .red-card small {
   font-family: 'Courier New', Courier, monospace;
   font-size: 0.7rem;
-  color: #777;
+  color: #8f8f8f;
   transition: color 0.28s;
 }
 
 .red-card:hover { transform: translateY(-6px); color: var(--white); }
-.red-card:hover small { color: rgba(255,255,255,0.75); }
+.red-card:hover small { color: rgba(255,255,255,0.8); }
 .red-ig:hover { background: #C13584; border-color: #C13584; }
-.red-tt:hover { background: #0a0a0a; border-color: #0a0a0a; }
+.red-tt:hover { background: #111; border-color: var(--white); }
 .red-yt:hover { background: #FF0000; border-color: #FF0000; }
 .red-sp:hover { background: #1DB954; border-color: #1DB954; }
 
