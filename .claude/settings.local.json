@@ -34,7 +34,8 @@
       "WebSearch",
       "WebFetch(domain:open.spotify.com)",
       "Bash(grep -n \"^/\\\\* ── FOOTER\\\\|^\\\\.footer {\" css/styles.css)",
-      "Bash(cd \"/c/Users/PC WHITE WOLF/OneDrive/VOLOBAND/LandingPage\" && if [ -f actualizar.bat ]; then echo \"=== actualizar.bat ===\"; cat actualizar.bat; else echo \"NO existe actualizar.bat aqui\"; fi; echo \"\"; echo \"=== .bat en las carpetas VOLOBAND ===\"; find \"/c/Users/PC WHITE WOLF/OneDrive/VOLOBAND\" -maxdepth 2 -iname \"*.bat\" 2>/dev/null)"
+      "Bash(cd \"/c/Users/PC WHITE WOLF/OneDrive/VOLOBAND/LandingPage\" && if [ -f actualizar.bat ]; then echo \"=== actualizar.bat ===\"; cat actualizar.bat; else echo \"NO existe actualizar.bat aqui\"; fi; echo \"\"; echo \"=== .bat en las carpetas VOLOBAND ===\"; find \"/c/Users/PC WHITE WOLF/OneDrive/VOLOBAND\" -maxdepth 2 -iname \"*.bat\" 2>/dev/null)",
+      "Bash(cp \"/c/Users/PCWHIT~1/AppData/Local/Temp/claude/C--Users-PC-WHITE-WOLF-OneDrive-VOLOBAND-LandingPage/0547795a-ab58-4ba3-a1dd-bebdc7b63668/scratchpad/viors/viors-blanco.png\" \"/c/Users/PC WHITE WOLF/OneDrive/VOLOBAND/VOLOFEST/assets/logos/viors.png\" *)"
     ]
   }
 }
