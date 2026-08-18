@@ -139,6 +139,7 @@ const SHOWS = [
     direccion: 'Veracruz, Ver.',
     hora: '5:00 PM · Cover $50 · Consumo mínimo recomendado $200',
     flyer: 'assets/flyer-agosto23.jpg',
+    flyerMini: 'assets/flyer-agosto23.webp',
     boletos: 'https://wa.me/522292708672?text=Hola!%20Quiero%20informaci%C3%B3n%20para%20el%20show%20del%2023%20de%20agosto%20en%20el%20Teatro%20Piano%20Bar',
     boletosTexto: 'APARTAR POR WHATSAPP'
   },
@@ -150,6 +151,7 @@ const SHOWS = [
     direccion: 'Hermenegildo Galeana 1028, El Coyol, Veracruz',
     hora: '6:00 PM a 1:00 AM · Ven disfrazado',
     flyer: 'assets/flyer-volofest.jpg',
+    flyerMini: 'assets/flyer-volofest.webp',
     boletos: 'https://volofest.lavoloband.com',
     boletosTexto: 'VER EL EVENTO'
   },
@@ -189,7 +191,7 @@ function renderCartelera() {
 
     const flyer = s.flyer
       ? `<a class="evento-flyer" href="${s.flyer}" target="_blank" rel="noopener" aria-label="Ver el flyer de ${s.titulo}">
-           <img src="${s.flyer}" alt="Flyer — ${s.titulo}" loading="lazy">
+           <img src="${s.flyerMini || s.flyer}" alt="Flyer — ${s.titulo}" loading="lazy" decoding="async">
          </a>`
       : '';
 
