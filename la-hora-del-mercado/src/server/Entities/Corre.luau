@@ -8,7 +8,7 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Config = require(ReplicatedStorage.Shared.Config)
-local SoundUtil = require(ReplicatedStorage.Shared.SoundUtil)
+local SoundBank = require(ReplicatedStorage.Shared.SoundBank)
 local PlayerSession = require(script.Parent.Parent.PlayerSession)
 
 local Corre = {}
@@ -58,7 +58,7 @@ function Corre.setup()
 		mark.Transparency = 0.92
 		mark.Parent = folder
 
-		local whisper = SoundUtil.make(mark, Config.Sounds.Whisper, {
+		local whisper = SoundBank.make(mark, "Whisper", {
 			Volume = 0.35,
 			Looped = true,
 			RollOffMaxDistance = Config.Corre.WhisperRadius + 6,
@@ -90,7 +90,7 @@ function Corre.setup()
 						local v = root.AssemblyLinearVelocity
 						local speed = Vector3.new(v.X, 0, v.Z).Magnitude
 						if speed > Config.RunDeathSpeed then
-							SoundUtil.playAt(root.Position, Config.Sounds.Snap, 1, 90)
+							SoundBank.playAt(root.Position, "Step", 1, 90)
 							PlayerSession.kill(player, "corre")
 						end
 						break

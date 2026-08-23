@@ -19,6 +19,7 @@ local deathTitle: TextLabel
 local introLabel: TextLabel
 
 local PHASE_NAMES = {
+	LOBBY = "la vecindad",
 	INTERMISSION = "esperando la tarde",
 	TARDE = "tarde",
 	CIERRE = "cierre",
@@ -137,6 +138,16 @@ function HUD.init()
 		TextTransparency = 1,
 		Text = "LA HORA DEL MERCADO",
 	})
+end
+
+-- En el vestíbulo el reloj no significa nada todavía, así que se esconde.
+function HUD.setLobby(inLobby: boolean)
+	clockLabel.Visible = not inLobby
+	if inLobby then
+		phaseLabel.Text = PHASE_NAMES.LOBBY
+		phaseLabel.TextColor3 = Color3.fromRGB(214, 178, 120)
+		subtitleLabel.Text = ""
+	end
 end
 
 function HUD.setClock(hh: number, mm: number)

@@ -8,7 +8,7 @@ local TweenService = game:GetService("TweenService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Config = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Config"))
-local SoundUtil = require(ReplicatedStorage.Shared.SoundUtil)
+local SoundBank = require(ReplicatedStorage.Shared.SoundBank)
 local Camera = require(script.Parent.Camera)
 
 local Effects = {}
@@ -143,7 +143,7 @@ function Effects.init(onSubtitle: (string) -> ())
 	subtitleCallback = onSubtitle
 	buildVignette()
 
-	heartbeat = SoundUtil.make(player:WaitForChild("PlayerGui"), Config.Sounds.Heartbeat, {
+	heartbeat = SoundBank.make(player:WaitForChild("PlayerGui"), "Heartbeat", {
 		Volume = 0,
 		Looped = true,
 		Name = "Latido",

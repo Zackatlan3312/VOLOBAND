@@ -10,10 +10,11 @@ local NAMES = {
 	"Clock", -- (hh, mm)
 	"Objective", -- (texto) objetivo personal
 	"Death", -- (causa) al jugador que murió
-	"RoundState", -- ("INTERMISSION" | "ROUND" | "RESULTS")
+	"RoundState", -- ("LOBBY" | "ROUND" | "RESULTS" | "SPECTATE")
 	"Subtitle", -- (texto) susurros / narrativa ambiental
 	"SprintRequest", -- cliente → servidor (bool)
 	"FlashlightRequest", -- cliente → servidor
+	"Hello", -- cliente → servidor: "ya estoy escuchando, dime en qué punto vamos"
 }
 
 local folder: Folder

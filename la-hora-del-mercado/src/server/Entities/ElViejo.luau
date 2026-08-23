@@ -10,7 +10,7 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Config = require(ReplicatedStorage.Shared.Config)
-local SoundUtil = require(ReplicatedStorage.Shared.SoundUtil)
+local SoundBank = require(ReplicatedStorage.Shared.SoundBank)
 local RigFactory = require(script.Parent.Parent.RigFactory)
 local PlayerSession = require(script.Parent.Parent.PlayerSession)
 
@@ -64,7 +64,7 @@ function ElViejo.new(map: any)
 
 	local head = model:FindFirstChild("Head") :: BasePart
 	self.dialog = makeBillboard(head)
-	self.breath = SoundUtil.make(self.root, Config.Sounds.Breathing, {
+	self.breath = SoundBank.make(self.root, "Breathing", {
 		Volume = 0,
 		Looped = true,
 		RollOffMaxDistance = 40,
@@ -72,7 +72,7 @@ function ElViejo.new(map: any)
 		Name = "Respiracion",
 	})
 	self.breath:Play()
-	self.steps = SoundUtil.make(self.root, Config.Sounds.Snap, {
+	self.steps = SoundBank.make(self.root, "Step", {
 		Volume = 0.25,
 		RollOffMaxDistance = 50,
 		Name = "Pasos",
@@ -101,7 +101,7 @@ function ElViejo:setPhase(phase: string)
 		self.huntStart = os.clock()
 		self.model:SetAttribute("Hunting", true)
 		self.breath.Volume = 0.65
-		SoundUtil.playAt(self.root.Position, Config.Sounds.Scream, 0.9, 250)
+		SoundBank.playAt(self.root.Position, "Scream", 0.9, 250)
 		self:_say("Ya es hora.")
 	end
 end
@@ -202,7 +202,7 @@ function ElViejo:_approachSomeone()
 	self.model:PivotTo(look)
 	local lines = Config.ViejoLines[self.phase] or Config.ViejoLines.TARDE
 	self:_say(lines[rng:NextInteger(1, #lines)])
-	SoundUtil.playAt(self.root.Position, Config.Sounds.Whisper, 0.5, 30)
+	SoundBank.playAt(self.root.Position, "Whisper", 0.5, 30)
 	task.wait(4)
 end
 

@@ -7,7 +7,7 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Config = require(ReplicatedStorage.Shared.Config)
-local SoundUtil = require(ReplicatedStorage.Shared.SoundUtil)
+local SoundBank = require(ReplicatedStorage.Shared.SoundBank)
 
 local Footsteps = {}
 
@@ -18,7 +18,7 @@ local function attach(char: Model)
 		return
 	end
 
-	local step = SoundUtil.make(root, Config.Sounds.Snap, {
+	local step = SoundBank.make(root, "Step", {
 		Volume = 0.3,
 		RollOffMaxDistance = 45,
 		RollOffMinDistance = 4,

@@ -68,22 +68,115 @@ Config.NPC = {
 	FearSpeed = 13,
 }
 
--- ── Sonidos ──────────────────────────────────────────────────────────────────
--- Ids de la biblioteca de audio de Roblox. Si alguno deja de estar disponible
--- el juego sigue funcionando (solo se pierde ese sonido); puedes sustituirlos
--- por cualquier otro id del Creator Marketplace.
-Config.Sounds = {
-	MallAmbience = "rbxassetid://9112854440",
-	NightAmbience = "rbxassetid://9112764547",
-	PersianaMove = "rbxassetid://9114221327",
-	DoorCreak = "rbxassetid://9113905997",
-	Whisper = "rbxassetid://9114653732",
-	Heartbeat = "rbxassetid://9114519241",
-	Breathing = "rbxassetid://9114362926",
-	Scream = "rbxassetid://9114143633",
-	Buzz = "rbxassetid://9112866662",
-	Chime = "rbxassetid://9113651131",
-	Snap = "rbxassetid://9114402044",
+-- ── Sonidos ─────────────────────────────────────────────────────────────────
+-- Cada "cue" es una lista de candidatos en orden de preferencia. Al arrancar,
+-- SoundBank prueba cuáles cargan de verdad y se queda con el primero que sirva.
+--
+-- Los `rbxasset://` vienen dentro de la instalación de Roblox: no pasan por la
+-- red, no dependen de permisos y no pueden fallar por privacidad de audio. Los
+-- `rbxassetid://` de respaldo son los sonidos por defecto del personaje, que
+-- son de Roblox y públicos.
+--
+-- ¿Tienes audio propio? No toques esta tabla: pon tus ids en SoundOverrides.
+Config.SoundCues = {
+	-- Pasos y golpes secos
+	Step = {
+		"rbxasset://sounds/action_footsteps_plastic.mp3",
+		"rbxasset://sounds/clickfast.wav",
+		"rbxassetid://5766940624",
+	},
+	Click = {
+		"rbxasset://sounds/switch.wav",
+		"rbxasset://sounds/clickfast.wav",
+		"rbxasset://sounds/button.wav",
+		"rbxasset://sounds/electronicpingshort.wav",
+	},
+	-- Metal: persianas, rejas, puertas de servicio
+	Metal = {
+		"rbxasset://sounds/metal.ogg",
+		"rbxasset://sounds/collide.wav",
+		"rbxasset://sounds/hit.wav",
+		"rbxasset://sounds/unsheath.wav",
+	},
+	Creak = {
+		"rbxasset://sounds/unsheath.wav",
+		"rbxasset://sounds/action_get_up.mp3",
+		"rbxasset://sounds/swordslash.wav",
+		"rbxassetid://5766940374",
+	},
+	-- Voz humana: susurros, gritos, respiración
+	Whisper = {
+		"rbxasset://sounds/uuhhh.mp3",
+		"rbxassetid://5766823599",
+	},
+	Scream = {
+		"rbxasset://sounds/uuhhh.mp3",
+		"rbxassetid://5766823599",
+	},
+	Breathing = {
+		"rbxasset://sounds/action_swim.mp3",
+		"rbxassetid://5766941307",
+	},
+	-- Sostenidos: base de los drones y de la música
+	Drone = {
+		"rbxasset://sounds/action_falling.mp3",
+		"rbxassetid://5766940765",
+		"rbxasset://sounds/action_swim.mp3",
+	},
+	Heartbeat = {
+		"rbxasset://sounds/bass.wav",
+		"rbxasset://sounds/collide.wav",
+		"rbxassetid://5766940624",
+	},
+	-- Eléctricos
+	Buzz = {
+		"rbxasset://sounds/electronicpingshort.wav",
+		"rbxasset://sounds/switch.wav",
+		"rbxasset://sounds/clickfast.wav",
+	},
+	Chime = {
+		"rbxasset://sounds/electronicpingshort.wav",
+		"rbxasset://sounds/victory.wav",
+		"rbxasset://sounds/switch3.wav",
+	},
+	-- Nota afinada: es la voz que toca el tema del juego
+	Note = {
+		"rbxasset://sounds/electronicpingshort.wav",
+		"rbxasset://sounds/bass.wav",
+		"rbxasset://sounds/switch3.wav",
+	},
+}
+
+-- Pon aquí tus propios ids para sustituir cualquier cue. Lo que escribas aquí
+-- gana siempre, sin pasar por la lista de candidatos. Ejemplo:
+--   Config.SoundOverrides = { Whisper = "rbxassetid://TU_ID" }
+Config.SoundOverrides = {} :: { [string]: string }
+
+-- ── Música ──────────────────────────────────────────────────────────────────
+-- La partitura es generativa: se construye con drones afinados y un motivo de
+-- notas, así que no depende de ningún archivo de música subido.
+Config.Music = {
+	MasterVolume = 0.5,
+	-- Motivo del tema, en semitonos respecto a la tónica. Los `false` son
+	-- silencios. Cámbialo y cambia el tema del juego.
+	Motif = { 0, 7, 3, 5, false, 0, -2, false },
+	NoteSeconds = 0.62,
+	-- Acorde de fondo (semitonos) y carácter de cada fase.
+	Phases = {
+		LOBBY = { chord = { -24, -12, -5 }, droneVolume = 0.16, motifVolume = 0.2, tempo = 1 },
+		TARDE = { chord = { -24, -12, -7 }, droneVolume = 0.13, motifVolume = 0.13, tempo = 1.05 },
+		CIERRE = { chord = { -24, -13, -8 }, droneVolume = 0.24, motifVolume = 0.1, tempo = 0.8 },
+		PROHIBIDA = { chord = { -25, -24, -13 }, droneVolume = 0.4, motifVolume = 0, tempo = 0.55 },
+		RESULTS = { chord = { -24, -12, -5 }, droneVolume = 0.12, motifVolume = 0.14, tempo = 0.9 },
+	},
+}
+
+-- ── Vestíbulo ───────────────────────────────────────────────────────────────
+Config.Lobby = {
+	-- El vestíbulo vive muy por encima del bazar para no cruzarse con nada.
+	Origin = Vector3.new(0, 400, 0),
+	ReadyCountdown = 12, -- segundos desde que hay alguien listo hasta empezar
+	DeathReturnDelay = 6, -- segundos de pantalla de muerte antes de volver
 }
 
 -- ── Textos ───────────────────────────────────────────────────────────────────

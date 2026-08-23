@@ -18,7 +18,11 @@ en la lógica.
 
 ### Bucle de partida
 
-`Intermedio → TARDE → CIERRE → HORA PROHIBIDA → Resultados`, en bucle infinito.
+`Vestíbulo → TARDE → CIERRE → HORA PROHIBIDA → Resultados → Vestíbulo`
+
+Los jugadores viven en el vestíbulo. Solo entran al bazar los que se paran
+frente a la reja; el resto se queda esperando. Quien muere vuelve al vestíbulo
+a los pocos segundos, y al terminar la ronda vuelven todos.
 
 | Fase | Duración | Reloj | Qué pasa |
 |---|---|---|---|
@@ -27,6 +31,22 @@ en la lógica.
 | Hora prohibida | 3.5 min | 23:59 → 01:00 | Empieza la cacería |
 
 La ronda termina antes si todos los jugadores ya murieron o llegaron a casa.
+
+### Vestíbulo — "La Vecindad"
+
+Un patio techado de edificio de departamentos: fachadas de dos niveles con
+puertas numeradas, escalera, tendedero, macetas, tinaco y una serie de foquitos
+cruzando el patio. Está siempre cálido e iluminado, para que el contraste con
+el bazar de noche se note.
+
+Contiene:
+
+- **Tablero de cómo se juega** y **tablero de controles**
+- **Tablero "Última noche"**, que se actualiza al terminar cada ronda con quién
+  volvió, quién volvió con su encargo y de qué murió cada quien
+- **La reja "AL BAZAR"**: pararte en la zona iluminada frente a ella es tu forma
+  de decir que entras. Un cartel flotante lleva el conteo de listos y la cuenta
+  atrás, así que todos ven quién se está animando
 
 ### Mapa
 
@@ -121,11 +141,16 @@ python3 build/build_place.py
 
 ```
 src/
-  shared/          Config, Remotes, utilidades de sonido
-    Config.luau        ← todo el balance, textos y sonidos viven aquí
+  shared/
+    Config.luau        ← todo el balance, textos, audio y música viven aquí
+    Remotes.luau
+    SoundBank.luau     Resuelve y verifica el audio disponible
   server/
     Main.server.luau   Punto de entrada
     MapBuilder.luau    Construye el complejo entero por código
+    LobbyBuilder.luau  Construye la vecindad
+    LobbySystem.luau   Espera, listos, ir y volver del bazar
+    MusicDirector.luau Partitura generativa por fase
     GameLoop.luau      Fases, reloj, encargos, victoria/derrota
     PlayerSession.luau Estado por jugador, ruido, sprint, linterna, muerte
     LightingRig.luau   Atmósfera y luminarias por fase
@@ -143,20 +168,53 @@ src/
 ```
 
 Todo el balance está en `src/shared/Config.luau`: duraciones de fase,
-velocidades, radio de muerte, cantidad de sellos, nombres de locales y frases
-de El Viejo. No hace falta tocar los sistemas para ajustar el juego.
+velocidades, radio de muerte, cantidad de sellos, nombres de locales, frases
+de El Viejo, el motivo musical y la espera del vestíbulo. No hace falta tocar los sistemas para ajustar el juego.
 
 ---
 
 ## Sobre el audio
 
-`Config.Sounds` apunta a ids de la biblioteca de Roblox. Si alguno no está
-disponible en tu región o deja de existir, **el juego sigue funcionando**: solo
-se pierde ese sonido concreto (`SoundUtil` lo tolera).
+Todo el audio sale de sonidos que vienen **dentro de la instalación de Roblox**
+(`rbxasset://`). No pasan por la red, no dependen de permisos y no pueden
+romperse por los cambios de privacidad de audio — que es exactamente lo que
+tumbó la primera versión.
 
-El documento es claro en que el sonido es lo más importante del juego, así que
-vale la pena sustituirlos por audio propio. Sube tus archivos al Creator
-Marketplace y cambia los ids en `Config.Sounds` — no hay que tocar nada más.
+Aun así, ningún id se da por bueno a ciegas. Al arrancar, `SoundBank` precarga
+todos los candidatos **una sola vez**, comprueba cuáles cargaron de verdad y se
+queda con el primero que sirva de cada sonido. Lo reporta en el Output:
+
+```
+[LaHoraDelMercado] Audio: 12/12 sonidos resueltos.
+```
+
+Si alguno no resuelve, lo dice por su nombre y ese efecto queda en silencio —
+sin volver a intentarlo ni llenar la consola. El juego sigue funcionando igual.
+
+### Poner tu propio audio
+
+Sube tus archivos al Creator Marketplace y ponlos en `Config.SoundOverrides`:
+
+```lua
+Config.SoundOverrides = {
+	Whisper = "rbxassetid://TU_ID",
+	Metal = "rbxassetid://TU_ID",
+}
+```
+
+Lo que pongas ahí gana sobre todo lo demás. No hace falta tocar ningún sistema.
+
+### La música
+
+No hay archivos de música: la partitura se genera en vivo. Un sonido sostenido
+cualquiera, bajado de tono y pasado por reverberación y ecualizador, se
+convierte en el drone de fondo; una nota corta, afinada por semitonos, toca el
+motivo del tema.
+
+Cada fase tiene su acorde y su carácter, y el motivo se va apagando conforme
+cae la noche hasta que en la hora prohibida solo queda el drone. El tema está
+en `Config.Music.Motif` como una lista de semitonos: cámbiala y cambia el tema
+del juego.
 
 ---
 

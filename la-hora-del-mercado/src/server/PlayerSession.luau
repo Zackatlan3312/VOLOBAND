@@ -7,7 +7,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Config = require(ReplicatedStorage.Shared.Config)
 local Remotes = require(ReplicatedStorage.Shared.Remotes)
-local SoundUtil = require(ReplicatedStorage.Shared.SoundUtil)
+local SoundBank = require(ReplicatedStorage.Shared.SoundBank)
 
 local PlayerSession = {}
 
@@ -24,6 +24,9 @@ export type State = {
 
 local states: { [Player]: State } = {}
 local map: any
+
+-- Lo asigna GameLoop: se llama cuando alguien muere, con (jugador, causa).
+PlayerSession.onDeath = nil :: ((Player, string) -> ())?
 
 local function newState(): State
 	return {
@@ -85,7 +88,7 @@ function PlayerSession.kill(player: Player, cause: string)
 		end
 		local root = char:FindFirstChild("HumanoidRootPart") :: BasePart?
 		if root then
-			SoundUtil.playAt(root.Position, Config.Sounds.Scream, 0.8, 120)
+			SoundBank.playAt(root.Position, "Scream", 0.8, 120)
 		end
 	end
 
@@ -94,6 +97,11 @@ function PlayerSession.kill(player: Player, cause: string)
 
 	local template = Config.DeathMessages[cause] or Config.DeathMessages.desconocido
 	Remotes.get("Toast"):FireAllClients(string.format(template, player.DisplayName), "death")
+
+	-- El GameLoop se engancha aquí para devolver al jugador al vestíbulo.
+	if PlayerSession.onDeath then
+		task.spawn(PlayerSession.onDeath, player, cause)
+	end
 end
 
 -- ── Preparación del personaje ────────────────────────────────────────────────
@@ -200,7 +208,7 @@ function PlayerSession.init(builtMap: any)
 			spot.Parent = head
 			st.flashlight = spot
 		end
-		SoundUtil.playAt((head :: BasePart).Position, Config.Sounds.Snap, 0.3, 25)
+		SoundBank.playAt((head :: BasePart).Position, "Step", 0.3, 25)
 	end)
 
 	-- Bucle de ruido: correr genera ruido; todo ruido se disipa con el tiempo.

@@ -6,7 +6,7 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Config = require(ReplicatedStorage.Shared.Config)
-local SoundUtil = require(ReplicatedStorage.Shared.SoundUtil)
+local SoundBank = require(ReplicatedStorage.Shared.SoundBank)
 local RigFactory = require(script.Parent.RigFactory)
 
 local NPCSystem = {}
@@ -85,7 +85,7 @@ local function npcLoop(entry: any)
 				-- Mira hacia atrás un instante.
 				local back = root.Position - root.CFrame.LookVector * 4
 				model:PivotTo(CFrame.lookAt(root.Position, Vector3.new(back.X, root.Position.Y, back.Z)))
-				SoundUtil.playAt(root.Position, Config.Sounds.Whisper, 0.4, 26)
+				SoundBank.playAt(root.Position, "Whisper", 0.4, 26)
 				task.wait(rng:NextNumber(0.6, 1.4))
 			end
 			moveTo(entry, EXIT_POINT + Vector3.new(rng:NextNumber(-3, 3), 0, rng:NextNumber(-4, 4)), 20)
@@ -140,7 +140,7 @@ function NPCSystem.setPhase(newPhase: string)
 		for _, entry in npcs do
 			if entry.alive and entry.model.PrimaryPart then
 				if rng:NextNumber() < 0.4 then
-					SoundUtil.playAt((entry.model.PrimaryPart :: BasePart).Position, Config.Sounds.Whisper, 0.5, 30)
+					SoundBank.playAt((entry.model.PrimaryPart :: BasePart).Position, "Whisper", 0.5, 30)
 				end
 			end
 		end

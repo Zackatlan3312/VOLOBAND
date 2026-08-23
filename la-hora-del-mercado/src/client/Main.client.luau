@@ -10,7 +10,9 @@ local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local Remotes = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Remotes"))
+local Shared = ReplicatedStorage:WaitForChild("Shared")
+local Remotes = require(Shared:WaitForChild("Remotes"))
+local SoundBank = require(Shared:WaitForChild("SoundBank"))
 
 local HUD = require(script.Parent.HUD)
 local Camera = require(script.Parent.Camera)
@@ -22,11 +24,21 @@ local camera = workspace.CurrentCamera
 local isDead = false
 local spectateIndex = 0
 
+-- El banco replica del servidor qué audio resolvió de verdad.
+SoundBank.init()
+
 HUD.init()
 Camera.init()
 Effects.init(HUD.subtitle)
 HUD.showIntro()
-HUD.setObjective("Esperando a que empiece la tarde…")
+HUD.setObjective("Cargando…")
+
+-- Avisa al servidor de que ya escuchamos, para que nos ponga al día. Sin esto,
+-- un jugador que entra justo antes de que arranque su LocalScript se perdería
+-- el estado inicial y se quedaría con el HUD vacío.
+task.defer(function()
+	Remotes.get("Hello"):FireServer()
+end)
 
 -- ── Entrada ──────────────────────────────────────────────────────────────────
 
@@ -111,6 +123,14 @@ Remotes.get("Death").OnClientEvent:Connect(function(cause: string)
 end)
 
 Remotes.get("RoundState").OnClientEvent:Connect(function(state: string)
+	if state == "LOBBY" then
+		-- De vuelta en la vecindad: sin reloj, sin muerte en pantalla.
+		isDead = false
+		spectateIndex = 0
+		HUD.hideDeath()
+		HUD.setLobby(true)
+		return
+	end
 	if state == "SPECTATE" then
 		-- Entró a mitad de ronda: sin personaje, pero puede seguir a los demás.
 		isDead = true
@@ -122,6 +142,7 @@ Remotes.get("RoundState").OnClientEvent:Connect(function(state: string)
 	if state == "INTERMISSION" or state == "ROUND" then
 		isDead = false
 		HUD.hideDeath()
+		HUD.setLobby(false)
 		local char = player.Character
 		local hum = char and char:FindFirstChildOfClass("Humanoid")
 		if hum then

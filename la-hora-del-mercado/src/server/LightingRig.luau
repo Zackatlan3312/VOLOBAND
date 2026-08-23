@@ -7,8 +7,7 @@ local Lighting = game:GetService("Lighting")
 local TweenService = game:GetService("TweenService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local Config = require(ReplicatedStorage.Shared.Config)
-local SoundUtil = require(ReplicatedStorage.Shared.SoundUtil)
+local SoundBank = require(ReplicatedStorage.Shared.SoundBank)
 
 local LightingRig = {}
 
@@ -69,7 +68,7 @@ local function startFlickerLoop()
 			if not f.tube.Parent then
 				continue
 			end
-			SoundUtil.playAt(f.tube.Position, Config.Sounds.Buzz, 0.35, 30)
+			SoundBank.playAt(f.tube.Position, "Buzz", 0.35, 30)
 			local wasOn = f.light.Enabled
 			for _ = 1, rng:NextInteger(2, 6) do
 				setFixture(f, false)

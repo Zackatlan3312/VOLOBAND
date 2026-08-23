@@ -1,19 +1,25 @@
 --!strict
 -- Orquestador de la partida.
--- Bucle: INTERMISSION → TARDE → CIERRE → HORA PROHIBIDA → RESULTADOS → ...
--- Gestiona el reloj del juego, el cierre escalonado de persianas, los
--- encargos (objetivo), la detección de "llegó a casa" y el fin de ronda.
+--
+--   Vestíbulo → (alguien se para frente a la reja) → cuenta atrás →
+--   TARDE → CIERRE → HORA PROHIBIDA → resultados → Vestíbulo
+--
+-- Solo entran al bazar quienes se pararon frente a la reja. El resto se queda
+-- en la vecindad, y quien muere vuelve ahí a los pocos segundos: el vestíbulo
+-- es el sitio al que siempre se regresa.
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Config = require(ReplicatedStorage.Shared.Config)
 local Remotes = require(ReplicatedStorage.Shared.Remotes)
-local SoundUtil = require(ReplicatedStorage.Shared.SoundUtil)
+local SoundBank = require(ReplicatedStorage.Shared.SoundBank)
 
 local PlayerSession = require(script.Parent.PlayerSession)
 local LightingRig = require(script.Parent.LightingRig)
 local NPCSystem = require(script.Parent.NPCSystem)
+local MusicDirector = require(script.Parent.MusicDirector)
+local LobbySystem = require(script.Parent.LobbySystem)
 local ElViejo = require(script.Parent.Entities.ElViejo)
 local Corre = require(script.Parent.Entities.Corre)
 
@@ -23,8 +29,11 @@ local rng = Random.new()
 local map: any
 local viejo: any = nil
 local packagesFolder: Folder? = nil
-local assignments: { [Player]: number } = {} -- jugador → índice de departamento
+local assignments: { [Player]: number } = {}
+local roundPlayers: { [Player]: boolean } = {}
 local roundActive = false
+local currentState = "LOBBY"
+local currentPhase = "LOBBY"
 
 local ambience: Sound
 local nightAmbience: Sound
@@ -40,46 +49,31 @@ local function formatClock(totalMinutes: number): (number, number)
 	return math.floor(m / 60), m % 60
 end
 
--- ── Asignación de departamentos ──────────────────────────────────────────────
-
-local function assignApartment(player: Player): number
-	local used = {}
-	for _, idx in assignments do
-		used[idx] = true
-	end
-	for i = 1, #map.apartments do
-		if not used[i] then
-			assignments[player] = i
-			return i
-		end
-	end
-	-- Más jugadores que departamentos: comparte el último.
-	assignments[player] = #map.apartments
-	return #map.apartments
+local function inRound(player: Player): boolean
+	return roundPlayers[player] == true
 end
 
-local function spawnInApartment(player: Player)
-	local idx = assignments[player] or assignApartment(player)
-	local apt = map.apartments[idx]
+-- ── Departamentos y encargos ─────────────────────────────────────────────────
+
+local function assignApartment(player: Player, index: number): number
+	local idx = ((index - 1) % #map.apartments) + 1
+	assignments[player] = idx
 	PlayerSession.get(player).aptIndex = idx
-	PlayerSession.spawnAt(player, apt.spawnCF)
+	return idx
 end
 
--- ── Encargos (objetivo de la ronda) ──────────────────────────────────────────
-
-local function placePackages(playersInRound: { Player })
+local function placePackages(players: { Player })
 	packagesFolder = Instance.new("Folder")
 	packagesFolder.Name = "Encargos"
 	packagesFolder.Parent = map.model
 
-	-- Baraja los locales para repartir un encargo por jugador.
 	local pool = table.clone(map.locales)
 	for i = #pool, 2, -1 do
 		local j = rng:NextInteger(1, i)
 		pool[i], pool[j] = pool[j], pool[i]
 	end
 
-	for i, player in playersInRound do
+	for i, player in players do
 		local locale = pool[((i - 1) % #pool) + 1]
 
 		local box = Instance.new("Part")
@@ -147,6 +141,9 @@ local function watchHomecoming()
 		while roundActive do
 			task.wait(0.4)
 			for _, player in Players:GetPlayers() do
+				if not inRound(player) then
+					continue
+				end
 				local st = PlayerSession.get(player)
 				if st.dead or st.safe or not st.aptIndex then
 					continue
@@ -173,12 +170,12 @@ end
 
 -- ── Fases y reloj ────────────────────────────────────────────────────────────
 
--- Ejecuta una fase: transmite el reloj cada segundo y llama onTick(elapsed).
--- Devuelve true si la fase terminó por tiempo, false si earlyEnd() la cortó.
 local function runPhase(name: string, onTick: ((number) -> ())?, earlyEnd: (() -> boolean)?): boolean
 	local duration = Config.PhaseDurations[name]
 	local range = Config.ClockRanges[name]
+	currentPhase = name
 	Remotes.get("Phase"):FireAllClients(name)
+	MusicDirector.setPhase(name)
 
 	local t0 = os.clock()
 	local lastWhole = -1
@@ -204,49 +201,50 @@ local function runPhase(name: string, onTick: ((number) -> ())?, earlyEnd: (() -
 	end
 end
 
+-- ¿Ya no queda nadie afuera? (muerto o en casa cuenta como resuelto)
 local function everyoneResolved(): boolean
-	local players = Players:GetPlayers()
-	if #players == 0 then
-		return true
-	end
-	for _, player in players do
-		local st = PlayerSession.get(player)
-		if st.aptIndex and not st.dead and not st.safe then
-			return false
+	for player in roundPlayers do
+		if player.Parent then
+			local st = PlayerSession.get(player)
+			if not st.dead and not st.safe then
+				return false
+			end
 		end
 	end
 	return true
 end
 
--- ── Ronda completa ───────────────────────────────────────────────────────────
+-- ── Ronda ────────────────────────────────────────────────────────────────────
 
-local function runRound()
+local function runRound(players: { Player })
 	roundActive = true
 	PlayerSession.resetAll()
+	table.clear(assignments)
+	table.clear(roundPlayers)
 
-	-- Reabre todo y reparte jugadores.
 	for _, locale in map.locales do
 		locale.persiana:open()
 		LightingRig.localeOn(locale.fixture)
 	end
 
-	assignments = {}
-	local playersInRound = Players:GetPlayers()
-	for _, player in playersInRound do
-		assignApartment(player)
-		spawnInApartment(player)
+	for i, player in players do
+		roundPlayers[player] = true
+		LobbySystem.markLeft(player)
+		local idx = assignApartment(player, i)
+		PlayerSession.spawnAt(player, map.apartments[idx].spawnCF)
 	end
 
 	LightingRig.setPhase("TARDE")
 	NPCSystem.spawnAll()
 	viejo = ElViejo.new(map)
 	Corre.setup()
-	placePackages(playersInRound)
+	placePackages(players)
 	watchHomecoming()
 
 	ambience.Volume = 0.35
 	nightAmbience.Volume = 0
 
+	currentState = "ROUND"
 	Remotes.get("RoundState"):FireAllClients("ROUND")
 	toastAll("La tarde cae sobre el Bazar El Centenario.", "info")
 
@@ -257,10 +255,9 @@ local function runRound()
 	viejo:setPhase("CIERRE")
 	NPCSystem.setPhase("CIERRE")
 	LightingRig.setPhase("CIERRE")
-	SoundUtil.playAt(Vector3.new(0, 8, 0), Config.Sounds.Chime, 0.8, 400)
+	SoundBank.playAt(Vector3.new(0, 8, 0), "Chime", 0.8, 400)
 	toastAll("«Estimados clientes: el bazar cerrará en unos minutos.»", "pa")
 
-	-- Cierre escalonado de persianas durante la fase.
 	local closeOrder = {}
 	for _, locale in map.locales do
 		table.insert(closeOrder, locale)
@@ -280,7 +277,6 @@ local function runRound()
 		while closedCount < #closeOrder and elapsed >= closeTimes[closedCount + 1] do
 			closedCount += 1
 			local locale = closeOrder[closedCount]
-			-- Los locales con encargos pendientes cierran al final de la fase.
 			local hasPendingPackage = false
 			if packagesFolder then
 				for _, box in packagesFolder:GetChildren() do
@@ -291,7 +287,7 @@ local function runRound()
 				end
 			end
 			if hasPendingPackage and elapsed < cierreDur - 30 then
-				table.insert(closeOrder, locale) -- reintenta al final
+				table.insert(closeOrder, locale)
 				table.insert(closeTimes, math.max(elapsed + 20, cierreDur - 20))
 			else
 				locale.persiana:close()
@@ -302,10 +298,11 @@ local function runRound()
 
 	-- ── HORA PROHIBIDA ──
 	ambience.Volume = 0.05
-	nightAmbience.Volume = 0.5
+	nightAmbience.Volume = 0.4
 	LightingRig.setPhase("PROHIBIDA")
 	NPCSystem.setPhase("PROHIBIDA")
 	viejo:setPhase("PROHIBIDA")
+	MusicDirector.sting(-24, 0.6)
 	for _, locale in map.locales do
 		if not locale.persiana.closed then
 			locale.persiana:close()
@@ -317,34 +314,45 @@ local function runRound()
 
 	local timedOut = runPhase("PROHIBIDA", nil, everyoneResolved)
 
-	-- A quien siga afuera cuando termina la noche, la noche lo reclama.
 	if timedOut then
-		for _, player in Players:GetPlayers() do
+		for player in roundPlayers do
 			local st = PlayerSession.get(player)
-			if st.aptIndex and not st.dead and not st.safe then
+			if player.Parent and not st.dead and not st.safe then
 				PlayerSession.kill(player, "noche")
 			end
 		end
 	end
 
-	-- ── RESULTADOS ──
+	-- ── Resultados ──
 	roundActive = false
+	currentState = "RESULTS"
 	Remotes.get("RoundState"):FireAllClients("RESULTS")
+	MusicDirector.setPhase("RESULTS")
 
 	local survivors, fullWins, deaths = 0, 0, 0
-	for _, player in Players:GetPlayers() do
+	local lines: { string } = {}
+	for player in roundPlayers do
 		local st = PlayerSession.get(player)
-		if st.aptIndex then
-			if st.safe then
-				survivors += 1
-				if st.hasPackage then
-					fullWins += 1
-				end
+		if st.safe then
+			survivors += 1
+			if st.hasPackage then
+				fullWins += 1
+				table.insert(lines, "✔ " .. player.DisplayName .. " — volvió con su encargo")
 			else
-				deaths += 1
+				table.insert(lines, "· " .. player.DisplayName .. " — volvió sin el encargo")
 			end
+		else
+			deaths += 1
+			local cause = st.deathCause or "desconocido"
+			local how = ({
+				viejo = "se lo llevó El Viejo",
+				corre = "corrió donde no debía",
+				noche = "no volvió a casa",
+			})[cause] or "se perdió en el bazar"
+			table.insert(lines, "✕ " .. player.DisplayName .. " — " .. how)
 		end
 	end
+
 	if survivors == 0 then
 		toastAll("Nadie volvió a casa esta noche.", "danger")
 	elseif deaths == 0 and fullWins == survivors then
@@ -353,9 +361,12 @@ local function runRound()
 		toastAll(("Sobrevivieron %d. El bazar se quedó con %d."):format(survivors, deaths), "info")
 	end
 
-	task.wait(8)
+	table.sort(lines)
+	LobbySystem.setResults(#lines > 0 and table.concat(lines, "\n") or "Nadie entró al bazar.")
 
-	-- Limpieza.
+	task.wait(6)
+
+	-- ── Limpieza y vuelta al vestíbulo ──
 	if viejo then
 		viejo:destroy()
 		viejo = nil
@@ -366,65 +377,138 @@ local function runRound()
 		packagesFolder:Destroy()
 		packagesFolder = nil
 	end
+	ambience.Volume = 0
+	nightAmbience.Volume = 0
+
+	for player in roundPlayers do
+		if player.Parent then
+			LobbySystem.send(player)
+		end
+	end
+	table.clear(roundPlayers)
 end
 
--- ── Bucle exterior ───────────────────────────────────────────────────────────
+-- ── Espera en el vestíbulo ───────────────────────────────────────────────────
 
-function GameLoop.start(builtMap: any)
+-- Devuelve la lista de jugadores que entran, o nil si se cortó la cuenta.
+local function waitForReady(): { Player }?
+	LobbySystem.setGateOpen(false)
+	LobbySystem.setReadyText("Párate aquí para entrar")
+
+	-- Espera a que alguien se plante frente a la reja.
+	while #LobbySystem.getReady() == 0 do
+		task.wait(0.5)
+	end
+
+	for remaining = Config.Lobby.ReadyCountdown, 1, -1 do
+		local ready = LobbySystem.getReady()
+		if #ready == 0 then
+			LobbySystem.setReadyText("Se echaron para atrás.")
+			task.wait(1.5)
+			return nil
+		end
+		LobbySystem.setReadyText(("%d listo%s — entran en %d"):format(#ready, #ready == 1 and "" or "s", remaining))
+		if remaining <= 3 then
+			SoundBank.playAt(Config.Lobby.Origin, "Click", 0.5, 120)
+		end
+		task.wait(1)
+	end
+
+	local final = LobbySystem.getReady()
+	if #final == 0 then
+		return nil
+	end
+	LobbySystem.setReadyText("Se abrió la reja.")
+	LobbySystem.setGateOpen(true)
+	task.wait(2)
+	return final
+end
+
+-- ── Arranque ─────────────────────────────────────────────────────────────────
+
+function GameLoop.start(builtMap: any, builtLobby: any)
 	map = builtMap
 
-	-- Ambiente global (los Sound directamente en Workspace suenan para todos).
-	ambience = SoundUtil.make(workspace, Config.Sounds.MallAmbience, { Volume = 0.35, Looped = true, Name = "AmbienteBazar" })
+	ambience = SoundBank.make(workspace, "Drone", {
+		Volume = 0,
+		Looped = true,
+		PlaybackSpeed = 0.45,
+		Name = "AmbienteBazar",
+	})
 	ambience:Play()
-	nightAmbience = SoundUtil.make(workspace, Config.Sounds.NightAmbience, { Volume = 0, Looped = true, Name = "AmbienteNoche" })
+	nightAmbience = SoundBank.make(workspace, "Drone", {
+		Volume = 0,
+		Looped = true,
+		PlaybackSpeed = 0.22,
+		Name = "AmbienteNoche",
+	})
 	nightAmbience:Play()
 
-	-- Quien entra a mitad de ronda espera como observador.
-	Players.PlayerAdded:Connect(function(player)
-		if roundActive then
-			Remotes.get("Toast"):FireClient(player, "La ronda ya comenzó. Observa hasta la siguiente.", "info")
-			Remotes.get("RoundState"):FireClient(player, "SPECTATE")
+	-- Quien muere vuelve al vestíbulo tras la pantalla de muerte.
+	PlayerSession.onDeath = function(player: Player)
+		task.delay(Config.Lobby.DeathReturnDelay, function()
+			if player.Parent and not LobbySystem.isInLobby(player) then
+				LobbySystem.send(player)
+			end
+		end)
+	end
+
+	-- El cliente avisa cuando ya está escuchando; le contamos dónde estamos.
+	Remotes.get("Hello").OnServerEvent:Connect(function(player: Player)
+		Remotes.get("Phase"):FireClient(player, currentPhase)
+		if LobbySystem.isInLobby(player) then
+			Remotes.get("RoundState"):FireClient(player, "LOBBY")
+			Remotes.get("Objective"):FireClient(player, "Párate frente a la reja para entrar al siguiente turno.")
+		elseif inRound(player) then
+			Remotes.get("RoundState"):FireClient(player, currentState)
 		else
-			assignApartment(player)
-			spawnInApartment(player)
+			Remotes.get("RoundState"):FireClient(player, "SPECTATE")
 		end
+	end)
+
+	Players.PlayerAdded:Connect(function(player)
+		LobbySystem.send(player)
+		Remotes.get("Toast"):FireClient(player, "Bienvenido a la vecindad. Lee los tableros.", "info")
 	end)
 
 	Players.PlayerRemoving:Connect(function(player)
 		assignments[player] = nil
+		roundPlayers[player] = nil
 	end)
+
+	for _, player in Players:GetPlayers() do
+		LobbySystem.send(player)
+	end
 
 	task.spawn(function()
 		while true do
-			-- Intermedio: espera jugadores y reparte departamentos.
-			Remotes.get("RoundState"):FireAllClients("INTERMISSION")
-			Remotes.get("Phase"):FireAllClients("INTERMISSION")
-			Remotes.get("Clock"):FireAllClients(17, 45)
-
-			while #Players:GetPlayers() < Config.MinPlayers do
-				task.wait(1)
-			end
-
-			-- Asegura que todos tengan personaje y departamento.
+			-- Vestíbulo.
+			currentState = "LOBBY"
+			currentPhase = "LOBBY"
+			Remotes.get("Phase"):FireAllClients("LOBBY")
+			MusicDirector.setPhase("LOBBY")
+			LightingRig.setPhase("TARDE")
 			for _, player in Players:GetPlayers() do
-				if not player.Character then
-					assignApartment(player)
-					spawnInApartment(player)
+				if not LobbySystem.isInLobby(player) then
+					LobbySystem.send(player)
 				end
 			end
 
-			for t = Config.IntermissionTime, 1, -1 do
-				if t == Config.IntermissionTime or t == 10 or t <= 5 then
-					toastAll(("La ronda comienza en %d..."):format(t), "info")
+			local players = waitForReady()
+			if players then
+				local ok, err = pcall(runRound, players)
+				if not ok then
+					warn("[LaHoraDelMercado] Error en la ronda: " .. tostring(err))
+					roundActive = false
+					-- Pase lo que pase, nadie se queda atrapado en el bazar.
+					for _, player in Players:GetPlayers() do
+						if not LobbySystem.isInLobby(player) then
+							LobbySystem.send(player)
+						end
+					end
 				end
-				task.wait(1)
 			end
-
-			local ok, err = pcall(runRound)
-			if not ok then
-				warn("[LaHoraDelMercado] Error en la ronda: " .. tostring(err))
-				roundActive = false
-			end
+			task.wait(1)
 		end
 	end)
 end

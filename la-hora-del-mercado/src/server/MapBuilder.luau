@@ -14,7 +14,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService = game:GetService("TweenService")
 
 local Config = require(ReplicatedStorage.Shared.Config)
-local SoundUtil = require(ReplicatedStorage.Shared.SoundUtil)
+local SoundBank = require(ReplicatedStorage.Shared.SoundBank)
 
 local H = 12 -- altura interior
 local WALL_T = 1 -- grosor de muros
@@ -179,7 +179,7 @@ local function makeDoor(map: any, parent: Instance, hingeX: number, z: number, w
 	local openCF = base * CFrame.Angles(0, math.rad(105), 0) * CFrame.new(width / 2, 0, 0)
 
 	local panel = part(parent, "Puerta", Vector3.new(width - 0.15, height - 0.1, 0.3), closedCF, style)
-	local creak = SoundUtil.make(panel, Config.Sounds.DoorCreak, { Volume = 0.55, RollOffMaxDistance = 55, Name = "Creak" })
+	local creak = SoundBank.make(panel, "Creak", { Volume = 0.55, RollOffMaxDistance = 55, Name = "Creak" })
 
 	local prompt = Instance.new("ProximityPrompt")
 	prompt.ActionText = "Abrir"
@@ -228,7 +228,7 @@ local function makePersiana(map: any, parent: Instance, centerX: number, z: numb
 	local openCF = CFrame.new(centerX, height / 2 + (height - 0.6), z)
 
 	local sheet = part(parent, "Persiana", Vector3.new(width, height, 0.5), openCF, STYLE.persiana)
-	local sound = SoundUtil.make(sheet, Config.Sounds.PersianaMove, { Volume = 0.7, RollOffMaxDistance = 80, Name = "Move" })
+	local sound = SoundBank.make(sheet, "Metal", { Volume = 0.7, RollOffMaxDistance = 80, Name = "Move" })
 
 	local prompt = Instance.new("ProximityPrompt")
 	prompt.ActionText = "Bajar persiana"
