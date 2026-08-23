@@ -1,0 +1,3539 @@
+<?xml version='1.0' encoding='utf-8'?>
+<roblox version="4">
+  <Item class="Lighting" referent="RBX1">
+    <Properties>
+      <string name="Name">Lighting</string>
+      <token name="Technology">4</token>
+    </Properties>
+  </Item>
+  <Item class="ReplicatedStorage" referent="RBX2">
+    <Properties>
+      <string name="Name">ReplicatedStorage</string>
+    </Properties>
+    <Item class="Folder" referent="RBX3">
+      <Properties>
+        <string name="Name">Shared</string>
+      </Properties>
+      <Item class="ModuleScript" referent="RBX4">
+        <Properties>
+          <string name="Name">Config</string>
+          <ProtectedString name="Source">--!strict
+-- Configuración central de "La Hora del Mercado".
+-- Todos los valores de balance, sonidos y textos viven aquí para poder
+-- ajustar el juego sin tocar los sistemas.
+
+local Config = {}
+
+Config.Version = "0.1.0 (vertical slice)"
+
+-- ── Jugadores ────────────────────────────────────────────────────────────────
+Config.MinPlayers = 1
+Config.MaxPlayers = 6
+
+-- ── Movimiento ───────────────────────────────────────────────────────────────
+Config.WalkSpeed = 10
+Config.SprintSpeed = 17
+-- Umbral de velocidad horizontal (studs/s) a partir del cual "Corre" mata
+-- dentro de un pasillo sellado.
+Config.RunDeathSpeed = 13
+
+-- ── Fases de la partida (segundos reales) ────────────────────────────────────
+Config.IntermissionTime = 20
+Config.PhaseDurations = {
+	TARDE = 120,
+	CIERRE = 120,
+	PROHIBIDA = 210,
+}
+
+-- Rango del reloj del juego por fase, en minutos desde las 00:00.
+-- La fase PROHIBIDA cruza medianoche (23:59 → 01:00).
+Config.ClockRanges = {
+	TARDE = { 18 * 60, 21 * 60 },
+	CIERRE = { 21 * 60, 23 * 60 + 59 },
+	PROHIBIDA = { 23 * 60 + 59, 25 * 60 },
+}
+
+-- ── Sistema de ruido ─────────────────────────────────────────────────────────
+Config.Noise = {
+	RunPerSecond = 12, -- ruido por segundo mientras se corre
+	Door = 8, -- abrir o cerrar una puerta
+	Persiana = 18, -- mover una persiana metálica
+	Decay = 6, -- ruido que se disipa por segundo
+	Max = 100,
+}
+
+-- ── Entidades ────────────────────────────────────────────────────────────────
+Config.Viejo = {
+	WalkSpeed = 7, -- paseo durante la tarde
+	HuntSpeedStart = 12.5, -- al iniciar la cacería
+	HuntSpeedEnd = 17, -- al final de la hora prohibida
+	HuntRampTime = 150, -- segundos para llegar a la velocidad máxima
+	KillRadius = 4.2,
+	ApproachIntervalMin = 18, -- cada cuánto se acerca a un jugador (tarde/cierre)
+	ApproachIntervalMax = 32,
+	RepathInterval = 0.65,
+	LurkTime = 8, -- segundos que acecha frente a un refugio
+	NoiseWeight = 0.6, -- cuánto pesa el ruido al elegir presa
+}
+
+Config.Corre = {
+	SealCount = 4, -- pasillos sellados por partida
+	WhisperRadius = 14, -- distancia a la que el cliente insinúa el peligro
+}
+
+Config.NPC = {
+	Count = 10,
+	WalkSpeed = 8,
+	FearSpeed = 13,
+}
+
+-- ── Sonidos ──────────────────────────────────────────────────────────────────
+-- Ids de la biblioteca de audio de Roblox. Si alguno deja de estar disponible
+-- el juego sigue funcionando (solo se pierde ese sonido); puedes sustituirlos
+-- por cualquier otro id del Creator Marketplace.
+Config.Sounds = {
+	MallAmbience = "rbxassetid://9112854440",
+	NightAmbience = "rbxassetid://9112764547",
+	PersianaMove = "rbxassetid://9114221327",
+	DoorCreak = "rbxassetid://9113905997",
+	Whisper = "rbxassetid://9114653732",
+	Heartbeat = "rbxassetid://9114519241",
+	Breathing = "rbxassetid://9114362926",
+	Scream = "rbxassetid://9114143633",
+	Buzz = "rbxassetid://9112866662",
+	Chime = "rbxassetid://9113651131",
+	Snap = "rbxassetid://9114402044",
+}
+
+-- ── Textos ───────────────────────────────────────────────────────────────────
+Config.LocaleNames = {
+	"Abarrotes Doña Mary",
+	"Zapatería El Paso",
+	"Papelería Lupita",
+	"Farmacia San Judas",
+	"Electrónica Kim",
+	"Ropa y Novedades Karla",
+	"Tortillería La Espiga",
+	"Celulares y Accesorios GaMa",
+	"Estética Unisex Rubí",
+	"Regalos y Piñatas Chuy",
+	"Herbolaria El Milagro",
+	"Juguetería El Trompo",
+}
+
+Config.ViejoLines = {
+	TARDE = {
+		"¿Sabes qué hora es?",
+		"¿Ya viste la hora, muchacho?",
+		"Antes este bazar cerraba temprano...",
+		"No te quedes hasta tarde. Hoy no.",
+	},
+	CIERRE = {
+		"Ya van a cerrar. Vete a casa.",
+		"No deberías estar afuera a esta hora.",
+		"Después de las doce, no te conozco.",
+		"Los que se quedan... se quedan.",
+	},
+}
+
+Config.DeathMessages = {
+	viejo = "A %s se lo llevó El Viejo.",
+	corre = "%s corrió donde no debía.",
+	noche = "%s no volvió a casa.",
+	desconocido = "%s se perdió en el bazar.",
+}
+
+return Config
+</ProtectedString>
+        </Properties>
+      </Item>
+      <Item class="ModuleScript" referent="RBX5">
+        <Properties>
+          <string name="Name">Remotes</string>
+          <ProtectedString name="Source">--!strict
+-- Crea (en el servidor) o localiza (en el cliente) los RemoteEvents del juego.
+
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
+
+local NAMES = {
+	"Toast", -- (mensaje, tipo) avisos en pantalla
+	"Phase", -- (nombreFase)
+	"Clock", -- (hh, mm)
+	"Objective", -- (texto) objetivo personal
+	"Death", -- (causa) al jugador que murió
+	"RoundState", -- ("INTERMISSION" | "ROUND" | "RESULTS")
+	"Subtitle", -- (texto) susurros / narrativa ambiental
+	"SprintRequest", -- cliente → servidor (bool)
+	"FlashlightRequest", -- cliente → servidor
+}
+
+local folder: Folder
+
+if RunService:IsServer() then
+	folder = Instance.new("Folder")
+	folder.Name = "LHMRemotes"
+	for _, name in NAMES do
+		local remote = Instance.new("RemoteEvent")
+		remote.Name = name
+		remote.Parent = folder
+	end
+	folder.Parent = ReplicatedStorage
+else
+	folder = ReplicatedStorage:WaitForChild("LHMRemotes") :: Folder
+end
+
+local Remotes = {}
+
+function Remotes.get(name: string): RemoteEvent
+	return folder:WaitForChild(name) :: RemoteEvent
+end
+
+return Remotes
+</ProtectedString>
+        </Properties>
+      </Item>
+      <Item class="ModuleScript" referent="RBX6">
+        <Properties>
+          <string name="Name">SoundUtil</string>
+          <ProtectedString name="Source">--!strict
+-- Utilidades de sonido con manejo tolerante: si un id de audio no está
+-- disponible, el Sound simplemente no reproduce nada y el juego continúa.
+
+local SoundUtil = {}
+
+export type SoundProps = {
+	Volume: number?,
+	Looped: boolean?,
+	PlaybackSpeed: number?,
+	RollOffMaxDistance: number?,
+	RollOffMinDistance: number?,
+	Name: string?,
+}
+
+function SoundUtil.make(parent: Instance, id: string, props: SoundProps?): Sound
+	local sound = Instance.new("Sound")
+	sound.SoundId = id
+	if props then
+		sound.Volume = props.Volume or 0.5
+		sound.Looped = props.Looped or false
+		sound.PlaybackSpeed = props.PlaybackSpeed or 1
+		sound.RollOffMaxDistance = props.RollOffMaxDistance or 60
+		sound.RollOffMinDistance = props.RollOffMinDistance or 6
+		sound.Name = props.Name or "Sound"
+	end
+	sound.Parent = parent
+	return sound
+end
+
+-- Reproduce un sonido puntual en una posición del mundo y lo limpia solo.
+function SoundUtil.playAt(position: Vector3, id: string, volume: number?, rollOffMax: number?)
+	local holder = Instance.new("Part")
+	holder.Anchored = true
+	holder.CanCollide = false
+	holder.CanQuery = false
+	holder.CanTouch = false
+	holder.Transparency = 1
+	holder.Size = Vector3.new(0.5, 0.5, 0.5)
+	holder.Position = position
+	holder.Parent = workspace
+
+	local sound = SoundUtil.make(holder, id, {
+		Volume = volume or 0.7,
+		RollOffMaxDistance = rollOffMax or 70,
+	})
+	sound.Ended:Once(function()
+		holder:Destroy()
+	end)
+	sound:Play()
+	task.delay(12, function()
+		if holder.Parent then
+			holder:Destroy()
+		end
+	end)
+end
+
+return SoundUtil
+</ProtectedString>
+        </Properties>
+      </Item>
+    </Item>
+  </Item>
+  <Item class="ServerScriptService" referent="RBX7">
+    <Properties>
+      <string name="Name">ServerScriptService</string>
+    </Properties>
+    <Item class="Folder" referent="RBX8">
+      <Properties>
+        <string name="Name">Server</string>
+      </Properties>
+      <Item class="Folder" referent="RBX9">
+        <Properties>
+          <string name="Name">Entities</string>
+        </Properties>
+        <Item class="ModuleScript" referent="RBX10">
+          <Properties>
+            <string name="Name">Corre</string>
+            <ProtectedString name="Source">--!strict
+-- CORRE. "No corras."
+-- Cada partida marca algunos pasillos con sellos invisibles. Si un jugador
+-- los atraviesa corriendo, muere al instante. Las únicas pistas son un
+-- brillo casi imperceptible en el piso y un susurro al acercarse.
+
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local Config = require(ReplicatedStorage.Shared.Config)
+local SoundUtil = require(ReplicatedStorage.Shared.SoundUtil)
+local PlayerSession = require(script.Parent.Parent.PlayerSession)
+
+local Corre = {}
+
+local rng = Random.new()
+local map: any
+local folder: Folder? = nil
+local activeSeals: { { region: any, part: Part } } = {}
+local running = false
+
+function Corre.init(builtMap: any)
+	map = builtMap
+end
+
+function Corre.setup()
+	Corre.cleanup()
+
+	folder = Instance.new("Folder")
+	folder.Name = "Seals"
+	folder.Parent = map.model
+
+	-- Elige pasillos sellados al azar (distintos en cada partida).
+	local pool = table.clone(map.sealCandidates)
+	for i = #pool, 2, -1 do
+		local j = rng:NextInteger(1, i)
+		pool[i], pool[j] = pool[j], pool[i]
+	end
+
+	for i = 1, math.min(Config.Corre.SealCount, #pool) do
+		local candidate = pool[i]
+		local region = candidate.region
+		local center = map.regionCenter(region)
+		local sizeX = region.x1 - region.x0
+		local sizeZ = region.z1 - region.z0
+
+		-- Marca sutil en el piso: una veladura rojiza casi invisible.
+		local mark = Instance.new("Part")
+		mark.Name = "CorreSeal"
+		mark.Anchored = true
+		mark.CanCollide = false
+		mark.CanQuery = false
+		mark.CanTouch = false
+		mark.Size = Vector3.new(sizeX, 0.1, sizeZ)
+		mark.Position = Vector3.new(center.X, 0.06, center.Z)
+		mark.Color = Color3.fromRGB(64, 10, 12)
+		mark.Material = Enum.Material.Neon
+		mark.Transparency = 0.92
+		mark.Parent = folder
+
+		local whisper = SoundUtil.make(mark, Config.Sounds.Whisper, {
+			Volume = 0.35,
+			Looped = true,
+			RollOffMaxDistance = Config.Corre.WhisperRadius + 6,
+			RollOffMinDistance = 2,
+			Name = "Susurro",
+		})
+		whisper:Play()
+
+		table.insert(activeSeals, { region = region, part = mark })
+	end
+
+	-- Vigilancia: matar a quien corra dentro de un sello.
+	running = true
+	task.spawn(function()
+		while running do
+			task.wait(0.12)
+			for _, player in Players:GetPlayers() do
+				local st = PlayerSession.get(player)
+				if st.dead or st.safe then
+					continue
+				end
+				local char = player.Character
+				local root = char and char:FindFirstChild("HumanoidRootPart") :: BasePart?
+				if not root then
+					continue
+				end
+				for _, seal in activeSeals do
+					if map.regionContains(seal.region, root.Position) then
+						local v = root.AssemblyLinearVelocity
+						local speed = Vector3.new(v.X, 0, v.Z).Magnitude
+						if speed &gt; Config.RunDeathSpeed then
+							SoundUtil.playAt(root.Position, Config.Sounds.Snap, 1, 90)
+							PlayerSession.kill(player, "corre")
+						end
+						break
+					end
+				end
+			end
+		end
+	end)
+end
+
+function Corre.cleanup()
+	running = false
+	table.clear(activeSeals)
+	if folder then
+		folder:Destroy()
+		folder = nil
+	end
+end
+
+return Corre
+</ProtectedString>
+          </Properties>
+        </Item>
+        <Item class="ModuleScript" referent="RBX11">
+          <Properties>
+            <string name="Name">ElViejo</string>
+            <ProtectedString name="Source">--!strict
+-- EL VIEJO.
+-- Antes de la hora prohibida deambula por el bazar, se acerca a los jugadores,
+-- pregunta la hora y advierte que no deberían estar afuera. Cuando el reloj
+-- marca las 23:59 comienza la cacería: persigue a la presa más ruidosa/cercana
+-- usando pathfinding, acecha frente a los refugios y mata por contacto.
+
+local PathfindingService = game:GetService("PathfindingService")
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local Config = require(ReplicatedStorage.Shared.Config)
+local SoundUtil = require(ReplicatedStorage.Shared.SoundUtil)
+local RigFactory = require(script.Parent.Parent.RigFactory)
+local PlayerSession = require(script.Parent.Parent.PlayerSession)
+
+local ElViejo = {}
+ElViejo.__index = ElViejo
+
+local rng = Random.new()
+
+local function makeBillboard(head: BasePart): TextLabel
+	local gui = Instance.new("BillboardGui")
+	gui.Name = "Dialogo"
+	gui.Size = UDim2.fromOffset(340, 60)
+	gui.StudsOffset = Vector3.new(0, 2.6, 0)
+	gui.MaxDistance = 45
+	gui.AlwaysOnTop = false
+	local label = Instance.new("TextLabel")
+	label.Size = UDim2.fromScale(1, 1)
+	label.BackgroundTransparency = 1
+	label.Font = Enum.Font.Merriweather
+	label.TextScaled = true
+	label.TextColor3 = Color3.fromRGB(226, 219, 200)
+	label.TextStrokeTransparency = 0.4
+	label.Text = ""
+	label.Visible = false
+	label.Parent = gui
+	gui.Parent = head
+	return label
+end
+
+function ElViejo.new(map: any)
+	local self = setmetatable({}, ElViejo)
+	self.map = map
+	self.mode = "PASSIVE" -- PASSIVE | HUNT | DEAD
+	self.phase = "TARDE"
+	self.alive = true
+	self.huntStart = 0
+
+	local model, humanoid = RigFactory.create({
+		name = "ElViejo",
+		skin = Color3.fromRGB(172, 160, 148),
+		shirt = Color3.fromRGB(74, 72, 68),
+		pants = Color3.fromRGB(48, 46, 44),
+		scale = 1.12,
+		hunch = 14,
+		walkSpeed = Config.Viejo.WalkSpeed,
+	})
+	self.model = model
+	self.humanoid = humanoid
+	self.root = model.PrimaryPart :: BasePart
+	model:SetAttribute("Hunting", false)
+
+	local head = model:FindFirstChild("Head") :: BasePart
+	self.dialog = makeBillboard(head)
+	self.breath = SoundUtil.make(self.root, Config.Sounds.Breathing, {
+		Volume = 0,
+		Looped = true,
+		RollOffMaxDistance = 40,
+		RollOffMinDistance = 4,
+		Name = "Respiracion",
+	})
+	self.breath:Play()
+	self.steps = SoundUtil.make(self.root, Config.Sounds.Snap, {
+		Volume = 0.25,
+		RollOffMaxDistance = 50,
+		Name = "Pasos",
+	})
+
+	RigFactory.place(model, Vector3.new(map.viejoSpawn.X, 0, map.viejoSpawn.Z))
+	model.Parent = workspace
+
+	task.spawn(function()
+		self:_run()
+	end)
+	task.spawn(function()
+		self:_killLoop()
+	end)
+	task.spawn(function()
+		self:_stepLoop()
+	end)
+
+	return self
+end
+
+function ElViejo:setPhase(phase: string)
+	self.phase = phase
+	if phase == "PROHIBIDA" and self.mode == "PASSIVE" then
+		self.mode = "HUNT"
+		self.huntStart = os.clock()
+		self.model:SetAttribute("Hunting", true)
+		self.breath.Volume = 0.65
+		SoundUtil.playAt(self.root.Position, Config.Sounds.Scream, 0.9, 250)
+		self:_say("Ya es hora.")
+	end
+end
+
+function ElViejo:_say(text: string)
+	self.dialog.Text = text
+	self.dialog.Visible = true
+	task.delay(4, function()
+		if self.dialog.Text == text then
+			self.dialog.Visible = false
+		end
+	end)
+end
+
+-- ── Utilidades de movimiento ─────────────────────────────────────────────────
+
+function ElViejo:_computePath(target: Vector3): { PathWaypoint }?
+	local path = PathfindingService:CreatePath({
+		AgentRadius = 2.2,
+		AgentHeight = 7,
+		AgentCanJump = false,
+		WaypointSpacing = 6,
+	})
+	local ok = pcall(function()
+		path:ComputeAsync(self.root.Position, target)
+	end)
+	if ok and path.Status == Enum.PathStatus.Success then
+		return path:GetWaypoints()
+	end
+	return nil
+end
+
+function ElViejo:_walkPath(target: Vector3, timeout: number, stopIf: (() -&gt; boolean)?): boolean
+	local waypoints = self:_computePath(target)
+	local t0 = os.clock()
+	if not waypoints then
+		-- Sin ruta: intenta ir directo (los pasillos son amplios).
+		self.humanoid:MoveTo(target)
+		while os.clock() - t0 &lt; math.min(timeout, 3) do
+			task.wait(0.15)
+			if not self.alive or (stopIf and stopIf()) then
+				return false
+			end
+			if (self.root.Position - target).Magnitude &lt; 4 then
+				return true
+			end
+		end
+		return false
+	end
+
+	for i = 2, #waypoints do
+		local wp = waypoints[i]
+		self.humanoid:MoveTo(wp.Position)
+		local reachedT0 = os.clock()
+		while true do
+			task.wait(0.1)
+			if not self.alive or (stopIf and stopIf()) then
+				return false
+			end
+			local flat = self.root.Position - wp.Position
+			if Vector2.new(flat.X, flat.Z).Magnitude &lt; 3 then
+				break
+			end
+			if os.clock() - reachedT0 &gt; 3 or os.clock() - t0 &gt; timeout then
+				return false
+			end
+		end
+	end
+	return true
+end
+
+-- ── Comportamiento pasivo (TARDE / CIERRE) ───────────────────────────────────
+
+function ElViejo:_approachSomeone()
+	local candidates = PlayerSession.alivePlayers()
+	if #candidates == 0 then
+		return
+	end
+	local target = candidates[rng:NextInteger(1, #candidates)]
+	local char = target.Character
+	local root = char and char:FindFirstChild("HumanoidRootPart") :: BasePart?
+	if not root then
+		return
+	end
+	if (root.Position - self.root.Position).Magnitude &gt; 110 then
+		return
+	end
+
+	self:_walkPath(root.Position, 25, function()
+		return self.mode ~= "PASSIVE"
+	end)
+	if self.mode ~= "PASSIVE" or not root.Parent then
+		return
+	end
+
+	-- Encara al jugador y suelta una de sus frases.
+	local look = CFrame.lookAt(self.root.Position, Vector3.new(root.Position.X, self.root.Position.Y, root.Position.Z))
+	self.model:PivotTo(look)
+	local lines = Config.ViejoLines[self.phase] or Config.ViejoLines.TARDE
+	self:_say(lines[rng:NextInteger(1, #lines)])
+	SoundUtil.playAt(self.root.Position, Config.Sounds.Whisper, 0.5, 30)
+	task.wait(4)
+end
+
+-- ── Cacería (PROHIBIDA) ──────────────────────────────────────────────────────
+
+function ElViejo:_pickPrey(): (Player?, BasePart?)
+	local best: Player? = nil
+	local bestRoot: BasePart? = nil
+	local bestScore = math.huge
+	for _, player in PlayerSession.alivePlayers() do
+		local char = player.Character
+		local root = char and char:FindFirstChild("HumanoidRootPart") :: BasePart?
+		if not root then
+			continue
+		end
+		if self.map.isInRefuge(root.Position) then
+			continue -- dentro de un refugio no lo puede alcanzar... por ahora
+		end
+		local noise = (char :: Model):GetAttribute("Noise") or 0
+		local score = (root.Position - self.root.Position).Magnitude - (noise :: number) * Config.Viejo.NoiseWeight
+		if score &lt; bestScore then
+			bestScore = score
+			best = player
+			bestRoot = root
+		end
+	end
+	return best, bestRoot
+end
+
+function ElViejo:_huntSpeed(): number
+	local t = math.clamp((os.clock() - self.huntStart) / Config.Viejo.HuntRampTime, 0, 1)
+	return Config.Viejo.HuntSpeedStart + (Config.Viejo.HuntSpeedEnd - Config.Viejo.HuntSpeedStart) * t
+end
+
+function ElViejo:_hunt()
+	self.humanoid.WalkSpeed = self:_huntSpeed()
+	local prey, preyRoot = self:_pickPrey()
+
+	if not prey or not preyRoot then
+		-- Todos escondidos: acecha el refugio del jugador vivo más cercano.
+		local nearest: BasePart? = nil
+		local nearestDist = math.huge
+		for _, player in PlayerSession.alivePlayers() do
+			local char = player.Character
+			local root = char and char:FindFirstChild("HumanoidRootPart") :: BasePart?
+			if root then
+				local d = (root.Position - self.root.Position).Magnitude
+				if d &lt; nearestDist then
+					nearestDist = d
+					nearest = root
+				end
+			end
+		end
+		if nearest then
+			-- Camina hasta cerca del refugio y espera, respirando.
+			local outside = nearest.Position + (self.root.Position - nearest.Position).Unit * 8
+			self:_walkPath(outside, 12, function()
+				return self.mode ~= "HUNT"
+			end)
+			self.breath.Volume = 0.9
+			task.wait(Config.Viejo.LurkTime)
+			self.breath.Volume = 0.65
+		else
+			task.wait(1)
+		end
+		return
+	end
+
+	-- Persecución con recálculo de ruta.
+	local lastKnown = preyRoot.Position
+	self:_walkPath(lastKnown, Config.Viejo.RepathInterval + 1.2, function()
+		if self.mode ~= "HUNT" then
+			return true
+		end
+		-- Si la presa se movió bastante, corta y recalcula.
+		return preyRoot.Parent ~= nil and (preyRoot.Position - lastKnown).Magnitude &gt; 7
+	end)
+end
+
+-- ── Bucles principales ───────────────────────────────────────────────────────
+
+function ElViejo:_run()
+	local nextApproach = os.clock() + rng:NextNumber(6, 12)
+	while self.alive do
+		if self.mode == "PASSIVE" then
+			self.humanoid.WalkSpeed = Config.Viejo.WalkSpeed
+			if os.clock() &gt;= nextApproach then
+				self:_approachSomeone()
+				nextApproach = os.clock() + rng:NextNumber(Config.Viejo.ApproachIntervalMin, Config.Viejo.ApproachIntervalMax)
+			else
+				local p = self.map.patrolPoints[rng:NextInteger(1, #self.map.patrolPoints)]
+				self:_walkPath(p, 14, function()
+					return self.mode ~= "PASSIVE" or os.clock() &gt;= nextApproach
+				end)
+			end
+		elseif self.mode == "HUNT" then
+			self:_hunt()
+		else
+			break
+		end
+		task.wait(0.1)
+	end
+end
+
+function ElViejo:_killLoop()
+	while self.alive do
+		task.wait(0.12)
+		if self.mode ~= "HUNT" then
+			continue
+		end
+		for _, player in PlayerSession.alivePlayers() do
+			local char = player.Character
+			local root = char and char:FindFirstChild("HumanoidRootPart") :: BasePart?
+			if not root then
+				continue
+			end
+			if self.map.isInRefuge(root.Position) then
+				continue
+			end
+			if (root.Position - self.root.Position).Magnitude &lt;= Config.Viejo.KillRadius then
+				PlayerSession.kill(player, "viejo")
+			end
+		end
+	end
+end
+
+-- Pasos audibles: el peligro se anuncia por el oído.
+function ElViejo:_stepLoop()
+	while self.alive do
+		local speed = self.humanoid.WalkSpeed
+		local moving = self.root.AssemblyLinearVelocity.Magnitude &gt; 1
+		if moving then
+			self.steps.PlaybackSpeed = self.mode == "HUNT" and 1.15 or 0.8
+			self.steps.Volume = self.mode == "HUNT" and 0.5 or 0.25
+			self.steps:Play()
+		end
+		task.wait(moving and math.clamp(6 / math.max(speed, 1), 0.28, 0.9) or 0.4)
+	end
+end
+
+function ElViejo:destroy()
+	self.alive = false
+	self.mode = "DEAD"
+	if self.model.Parent then
+		self.model:Destroy()
+	end
+end
+
+return ElViejo
+</ProtectedString>
+          </Properties>
+        </Item>
+      </Item>
+      <Item class="ModuleScript" referent="RBX12">
+        <Properties>
+          <string name="Name">Footsteps</string>
+          <ProtectedString name="Source">--!strict
+-- Pasos de los jugadores. El Sound vive en el personaje y lo reproduce el
+-- servidor, así que todos los demás oyen por dónde anda cada quien: correr
+-- se escucha desde mucho más lejos que caminar.
+
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local Config = require(ReplicatedStorage.Shared.Config)
+local SoundUtil = require(ReplicatedStorage.Shared.SoundUtil)
+
+local Footsteps = {}
+
+local function attach(char: Model)
+	local root = char:WaitForChild("HumanoidRootPart", 10) :: BasePart?
+	local hum = char:FindFirstChildOfClass("Humanoid")
+	if not root or not hum then
+		return
+	end
+
+	local step = SoundUtil.make(root, Config.Sounds.Snap, {
+		Volume = 0.3,
+		RollOffMaxDistance = 45,
+		RollOffMinDistance = 4,
+		Name = "Paso",
+	})
+
+	task.spawn(function()
+		while char.Parent and hum.Health &gt; 0 do
+			local v = root.AssemblyLinearVelocity
+			local speed = Vector3.new(v.X, 0, v.Z).Magnitude
+			if speed &gt; 1.5 then
+				local running = speed &gt; Config.WalkSpeed + 1
+				step.Volume = running and 0.6 or 0.28
+				step.PlaybackSpeed = running and 1.15 or 0.9
+				step.RollOffMaxDistance = running and 90 or 45
+				step:Play()
+				-- Un paso cada ~4 studs recorridos.
+				task.wait(math.clamp(4 / speed, 0.22, 0.7))
+			else
+				task.wait(0.2)
+			end
+		end
+	end)
+end
+
+function Footsteps.init()
+	local function hook(player: Player)
+		player.CharacterAdded:Connect(attach)
+		if player.Character then
+			attach(player.Character)
+		end
+	end
+	for _, player in Players:GetPlayers() do
+		hook(player)
+	end
+	Players.PlayerAdded:Connect(hook)
+end
+
+return Footsteps
+</ProtectedString>
+        </Properties>
+      </Item>
+      <Item class="ModuleScript" referent="RBX13">
+        <Properties>
+          <string name="Name">GameLoop</string>
+          <ProtectedString name="Source">--!strict
+-- Orquestador de la partida.
+-- Bucle: INTERMISSION → TARDE → CIERRE → HORA PROHIBIDA → RESULTADOS → ...
+-- Gestiona el reloj del juego, el cierre escalonado de persianas, los
+-- encargos (objetivo), la detección de "llegó a casa" y el fin de ronda.
+
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local Config = require(ReplicatedStorage.Shared.Config)
+local Remotes = require(ReplicatedStorage.Shared.Remotes)
+local SoundUtil = require(ReplicatedStorage.Shared.SoundUtil)
+
+local PlayerSession = require(script.Parent.PlayerSession)
+local LightingRig = require(script.Parent.LightingRig)
+local NPCSystem = require(script.Parent.NPCSystem)
+local ElViejo = require(script.Parent.Entities.ElViejo)
+local Corre = require(script.Parent.Entities.Corre)
+
+local GameLoop = {}
+
+local rng = Random.new()
+local map: any
+local viejo: any = nil
+local packagesFolder: Folder? = nil
+local assignments: { [Player]: number } = {} -- jugador → índice de departamento
+local roundActive = false
+
+local ambience: Sound
+local nightAmbience: Sound
+
+-- ── Utilidades ───────────────────────────────────────────────────────────────
+
+local function toastAll(msg: string, kind: string?)
+	Remotes.get("Toast"):FireAllClients(msg, kind or "info")
+end
+
+local function formatClock(totalMinutes: number): (number, number)
+	local m = math.floor(totalMinutes) % (24 * 60)
+	return math.floor(m / 60), m % 60
+end
+
+-- ── Asignación de departamentos ──────────────────────────────────────────────
+
+local function assignApartment(player: Player): number
+	local used = {}
+	for _, idx in assignments do
+		used[idx] = true
+	end
+	for i = 1, #map.apartments do
+		if not used[i] then
+			assignments[player] = i
+			return i
+		end
+	end
+	-- Más jugadores que departamentos: comparte el último.
+	assignments[player] = #map.apartments
+	return #map.apartments
+end
+
+local function spawnInApartment(player: Player)
+	local idx = assignments[player] or assignApartment(player)
+	local apt = map.apartments[idx]
+	PlayerSession.get(player).aptIndex = idx
+	PlayerSession.spawnAt(player, apt.spawnCF)
+end
+
+-- ── Encargos (objetivo de la ronda) ──────────────────────────────────────────
+
+local function placePackages(playersInRound: { Player })
+	packagesFolder = Instance.new("Folder")
+	packagesFolder.Name = "Encargos"
+	packagesFolder.Parent = map.model
+
+	-- Baraja los locales para repartir un encargo por jugador.
+	local pool = table.clone(map.locales)
+	for i = #pool, 2, -1 do
+		local j = rng:NextInteger(1, i)
+		pool[i], pool[j] = pool[j], pool[i]
+	end
+
+	for i, player in playersInRound do
+		local locale = pool[((i - 1) % #pool) + 1]
+
+		local box = Instance.new("Part")
+		box.Name = "Encargo_" .. player.Name
+		box.Anchored = true
+		box.Size = Vector3.new(1.8, 1.4, 1.4)
+		box.Position = locale.packageSpot
+		box.Color = Color3.fromRGB(168, 132, 92)
+		box.Material = Enum.Material.SmoothPlastic
+		box.Parent = packagesFolder
+
+		local gui = Instance.new("BillboardGui")
+		gui.Size = UDim2.fromOffset(160, 34)
+		gui.StudsOffset = Vector3.new(0, 1.6, 0)
+		gui.MaxDistance = 30
+		local label = Instance.new("TextLabel")
+		label.Size = UDim2.fromScale(1, 1)
+		label.BackgroundTransparency = 1
+		label.Font = Enum.Font.Gotham
+		label.TextScaled = true
+		label.TextColor3 = Color3.fromRGB(228, 214, 186)
+		label.TextStrokeTransparency = 0.5
+		label.Text = "Encargo de " .. player.DisplayName
+		label.Parent = gui
+		gui.Parent = box
+
+		local prompt = Instance.new("ProximityPrompt")
+		prompt.ActionText = "Recoger encargo"
+		prompt.ObjectText = locale.name
+		prompt.HoldDuration = 1
+		prompt.MaxActivationDistance = 7
+		prompt.RequiresLineOfSight = false
+		prompt.Parent = box
+
+		prompt.Triggered:Connect(function(who)
+			if who ~= player then
+				Remotes.get("Toast"):FireClient(who, "Ese encargo no es tuyo.", "info")
+				return
+			end
+			local st = PlayerSession.get(player)
+			if st.dead then
+				return
+			end
+			st.hasPackage = true
+			box:Destroy()
+			Remotes.get("Toast"):FireClient(player, "Tienes tu encargo. Ahora vuelve a tu departamento.", "good")
+			local apt = map.apartments[st.aptIndex or 1]
+			Remotes.get("Objective"):FireClient(player, "Regresa a tu departamento (" .. apt.name .. ") antes de las 23:59.")
+		end)
+
+		local st = PlayerSession.get(player)
+		st.hasPackage = false
+		local apt = map.apartments[st.aptIndex or 1]
+		Remotes.get("Objective"):FireClient(
+			player,
+			('Recoge tu encargo en "%s" y vuelve a tu departamento (%s) antes de las 23:59.'):format(locale.name, apt.name)
+		)
+	end
+end
+
+-- ── Detección de "llegó a casa" ──────────────────────────────────────────────
+
+local function watchHomecoming()
+	task.spawn(function()
+		while roundActive do
+			task.wait(0.4)
+			for _, player in Players:GetPlayers() do
+				local st = PlayerSession.get(player)
+				if st.dead or st.safe or not st.aptIndex then
+					continue
+				end
+				local char = player.Character
+				local root = char and char:FindFirstChild("HumanoidRootPart") :: BasePart?
+				if not root then
+					continue
+				end
+				local apt = map.apartments[st.aptIndex]
+				if map.regionContains(apt.region, root.Position) then
+					st.safe = true
+					if st.hasPackage then
+						toastAll(player.DisplayName .. " llegó a casa con su encargo.", "good")
+					else
+						toastAll(player.DisplayName .. " llegó a casa... sin su encargo.", "info")
+					end
+					Remotes.get("Objective"):FireClient(player, "Estás en casa. No salgas.")
+				end
+			end
+		end
+	end)
+end
+
+-- ── Fases y reloj ────────────────────────────────────────────────────────────
+
+-- Ejecuta una fase: transmite el reloj cada segundo y llama onTick(elapsed).
+-- Devuelve true si la fase terminó por tiempo, false si earlyEnd() la cortó.
+local function runPhase(name: string, onTick: ((number) -&gt; ())?, earlyEnd: (() -&gt; boolean)?): boolean
+	local duration = Config.PhaseDurations[name]
+	local range = Config.ClockRanges[name]
+	Remotes.get("Phase"):FireAllClients(name)
+
+	local t0 = os.clock()
+	local lastWhole = -1
+	while true do
+		local elapsed = os.clock() - t0
+		if elapsed &gt;= duration then
+			return true
+		end
+		if earlyEnd and earlyEnd() then
+			return false
+		end
+		local whole = math.floor(elapsed)
+		if whole &gt; lastWhole then
+			lastWhole = whole
+			local minutes = range[1] + (range[2] - range[1]) * (elapsed / duration)
+			local hh, mm = formatClock(minutes)
+			Remotes.get("Clock"):FireAllClients(hh, mm)
+			if onTick then
+				onTick(elapsed)
+			end
+		end
+		task.wait(0.2)
+	end
+end
+
+local function everyoneResolved(): boolean
+	local players = Players:GetPlayers()
+	if #players == 0 then
+		return true
+	end
+	for _, player in players do
+		local st = PlayerSession.get(player)
+		if st.aptIndex and not st.dead and not st.safe then
+			return false
+		end
+	end
+	return true
+end
+
+-- ── Ronda completa ───────────────────────────────────────────────────────────
+
+local function runRound()
+	roundActive = true
+	PlayerSession.resetAll()
+
+	-- Reabre todo y reparte jugadores.
+	for _, locale in map.locales do
+		locale.persiana:open()
+		LightingRig.localeOn(locale.fixture)
+	end
+
+	assignments = {}
+	local playersInRound = Players:GetPlayers()
+	for _, player in playersInRound do
+		assignApartment(player)
+		spawnInApartment(player)
+	end
+
+	LightingRig.setPhase("TARDE")
+	NPCSystem.spawnAll()
+	viejo = ElViejo.new(map)
+	Corre.setup()
+	placePackages(playersInRound)
+	watchHomecoming()
+
+	ambience.Volume = 0.35
+	nightAmbience.Volume = 0
+
+	Remotes.get("RoundState"):FireAllClients("ROUND")
+	toastAll("La tarde cae sobre el Bazar El Centenario.", "info")
+
+	-- ── TARDE ──
+	runPhase("TARDE")
+
+	-- ── CIERRE ──
+	viejo:setPhase("CIERRE")
+	NPCSystem.setPhase("CIERRE")
+	LightingRig.setPhase("CIERRE")
+	SoundUtil.playAt(Vector3.new(0, 8, 0), Config.Sounds.Chime, 0.8, 400)
+	toastAll("«Estimados clientes: el bazar cerrará en unos minutos.»", "pa")
+
+	-- Cierre escalonado de persianas durante la fase.
+	local closeOrder = {}
+	for _, locale in map.locales do
+		table.insert(closeOrder, locale)
+	end
+	for i = #closeOrder, 2, -1 do
+		local j = rng:NextInteger(1, i)
+		closeOrder[i], closeOrder[j] = closeOrder[j], closeOrder[i]
+	end
+	local cierreDur = Config.PhaseDurations.CIERRE
+	local closeTimes = {}
+	for i = 1, #closeOrder do
+		closeTimes[i] = 8 + (cierreDur - 25) * (i - 1) / math.max(#closeOrder - 1, 1)
+	end
+	local closedCount = 0
+
+	runPhase("CIERRE", function(elapsed)
+		while closedCount &lt; #closeOrder and elapsed &gt;= closeTimes[closedCount + 1] do
+			closedCount += 1
+			local locale = closeOrder[closedCount]
+			-- Los locales con encargos pendientes cierran al final de la fase.
+			local hasPendingPackage = false
+			if packagesFolder then
+				for _, box in packagesFolder:GetChildren() do
+					if map.regionContains(locale.region, (box :: Part).Position) then
+						hasPendingPackage = true
+						break
+					end
+				end
+			end
+			if hasPendingPackage and elapsed &lt; cierreDur - 30 then
+				table.insert(closeOrder, locale) -- reintenta al final
+				table.insert(closeTimes, math.max(elapsed + 20, cierreDur - 20))
+			else
+				locale.persiana:close()
+				LightingRig.localeOff(locale.fixture)
+			end
+		end
+	end)
+
+	-- ── HORA PROHIBIDA ──
+	ambience.Volume = 0.05
+	nightAmbience.Volume = 0.5
+	LightingRig.setPhase("PROHIBIDA")
+	NPCSystem.setPhase("PROHIBIDA")
+	viejo:setPhase("PROHIBIDA")
+	for _, locale in map.locales do
+		if not locale.persiana.closed then
+			locale.persiana:close()
+			LightingRig.localeOff(locale.fixture)
+		end
+	end
+	toastAll("23:59. No deberías estar afuera.", "danger")
+	Remotes.get("Subtitle"):FireAllClients("Algo cambió en el aire.")
+
+	local timedOut = runPhase("PROHIBIDA", nil, everyoneResolved)
+
+	-- A quien siga afuera cuando termina la noche, la noche lo reclama.
+	if timedOut then
+		for _, player in Players:GetPlayers() do
+			local st = PlayerSession.get(player)
+			if st.aptIndex and not st.dead and not st.safe then
+				PlayerSession.kill(player, "noche")
+			end
+		end
+	end
+
+	-- ── RESULTADOS ──
+	roundActive = false
+	Remotes.get("RoundState"):FireAllClients("RESULTS")
+
+	local survivors, fullWins, deaths = 0, 0, 0
+	for _, player in Players:GetPlayers() do
+		local st = PlayerSession.get(player)
+		if st.aptIndex then
+			if st.safe then
+				survivors += 1
+				if st.hasPackage then
+					fullWins += 1
+				end
+			else
+				deaths += 1
+			end
+		end
+	end
+	if survivors == 0 then
+		toastAll("Nadie volvió a casa esta noche.", "danger")
+	elseif deaths == 0 and fullWins == survivors then
+		toastAll("Todos volvieron a casa con su encargo. Esta vez.", "good")
+	else
+		toastAll(("Sobrevivieron %d. El bazar se quedó con %d."):format(survivors, deaths), "info")
+	end
+
+	task.wait(8)
+
+	-- Limpieza.
+	if viejo then
+		viejo:destroy()
+		viejo = nil
+	end
+	Corre.cleanup()
+	NPCSystem.cleanup()
+	if packagesFolder then
+		packagesFolder:Destroy()
+		packagesFolder = nil
+	end
+end
+
+-- ── Bucle exterior ───────────────────────────────────────────────────────────
+
+function GameLoop.start(builtMap: any)
+	map = builtMap
+
+	-- Ambiente global (los Sound directamente en Workspace suenan para todos).
+	ambience = SoundUtil.make(workspace, Config.Sounds.MallAmbience, { Volume = 0.35, Looped = true, Name = "AmbienteBazar" })
+	ambience:Play()
+	nightAmbience = SoundUtil.make(workspace, Config.Sounds.NightAmbience, { Volume = 0, Looped = true, Name = "AmbienteNoche" })
+	nightAmbience:Play()
+
+	-- Quien entra a mitad de ronda espera como observador.
+	Players.PlayerAdded:Connect(function(player)
+		if roundActive then
+			Remotes.get("Toast"):FireClient(player, "La ronda ya comenzó. Observa hasta la siguiente.", "info")
+			Remotes.get("RoundState"):FireClient(player, "SPECTATE")
+		else
+			assignApartment(player)
+			spawnInApartment(player)
+		end
+	end)
+
+	Players.PlayerRemoving:Connect(function(player)
+		assignments[player] = nil
+	end)
+
+	task.spawn(function()
+		while true do
+			-- Intermedio: espera jugadores y reparte departamentos.
+			Remotes.get("RoundState"):FireAllClients("INTERMISSION")
+			Remotes.get("Phase"):FireAllClients("INTERMISSION")
+			Remotes.get("Clock"):FireAllClients(17, 45)
+
+			while #Players:GetPlayers() &lt; Config.MinPlayers do
+				task.wait(1)
+			end
+
+			-- Asegura que todos tengan personaje y departamento.
+			for _, player in Players:GetPlayers() do
+				if not player.Character then
+					assignApartment(player)
+					spawnInApartment(player)
+				end
+			end
+
+			for t = Config.IntermissionTime, 1, -1 do
+				if t == Config.IntermissionTime or t == 10 or t &lt;= 5 then
+					toastAll(("La ronda comienza en %d..."):format(t), "info")
+				end
+				task.wait(1)
+			end
+
+			local ok, err = pcall(runRound)
+			if not ok then
+				warn("[LaHoraDelMercado] Error en la ronda: " .. tostring(err))
+				roundActive = false
+			end
+		end
+	end)
+end
+
+return GameLoop
+</ProtectedString>
+        </Properties>
+      </Item>
+      <Item class="ModuleScript" referent="RBX14">
+        <Properties>
+          <string name="Name">LightingRig</string>
+          <ProtectedString name="Source">--!strict
+-- Controla la atmósfera global y las luminarias del complejo según la fase:
+-- TARDE (todo encendido, cálido) → CIERRE (parcial, parpadeos) →
+-- PROHIBIDA (mínimo, frío, oscuridad).
+
+local Lighting = game:GetService("Lighting")
+local TweenService = game:GetService("TweenService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local Config = require(ReplicatedStorage.Shared.Config)
+local SoundUtil = require(ReplicatedStorage.Shared.SoundUtil)
+
+local LightingRig = {}
+
+local map: any
+local cc: ColorCorrectionEffect
+local rng = Random.new()
+local flickerSet: { any } = {}
+local flickerRunning = false
+local currentPhase = "TARDE"
+
+local PHASE_LIGHTING = {
+	TARDE = {
+		Ambient = Color3.fromRGB(34, 34, 38),
+		Brightness = 1.4,
+		cc = { Saturation = -0.05, Contrast = 0.02, Brightness = 0, TintColor = Color3.fromRGB(255, 252, 245) },
+	},
+	CIERRE = {
+		Ambient = Color3.fromRGB(22, 22, 27),
+		Brightness = 1.1,
+		cc = { Saturation = -0.16, Contrast = 0.05, Brightness = -0.02, TintColor = Color3.fromRGB(244, 244, 248) },
+	},
+	PROHIBIDA = {
+		Ambient = Color3.fromRGB(8, 8, 12),
+		Brightness = 0.7,
+		cc = { Saturation = -0.38, Contrast = 0.1, Brightness = -0.05, TintColor = Color3.fromRGB(210, 220, 248) },
+	},
+}
+
+local COLD = Color3.fromRGB(198, 214, 255)
+
+local function setFixture(f: any, on: boolean, color: Color3?, brightness: number?)
+	local c = color or f.baseColor
+	if on then
+		f.tube.Material = Enum.Material.Neon
+		f.tube.Color = c
+		f.light.Enabled = true
+		f.light.Color = c
+		f.light.Brightness = brightness or f.baseBrightness
+	else
+		f.tube.Material = Enum.Material.SmoothPlastic
+		f.tube.Color = Color3.fromRGB(70, 70, 74)
+		f.light.Enabled = false
+	end
+end
+
+local function startFlickerLoop()
+	if flickerRunning then
+		return
+	end
+	flickerRunning = true
+	task.spawn(function()
+		while true do
+			task.wait(rng:NextNumber(1.5, 5))
+			if #flickerSet == 0 then
+				continue
+			end
+			local f = flickerSet[rng:NextInteger(1, #flickerSet)]
+			if not f.tube.Parent then
+				continue
+			end
+			SoundUtil.playAt(f.tube.Position, Config.Sounds.Buzz, 0.35, 30)
+			local wasOn = f.light.Enabled
+			for _ = 1, rng:NextInteger(2, 6) do
+				setFixture(f, false)
+				task.wait(rng:NextNumber(0.04, 0.12))
+				setFixture(f, true, currentPhase == "PROHIBIDA" and COLD or nil, currentPhase == "PROHIBIDA" and 0.6 or nil)
+				task.wait(rng:NextNumber(0.05, 0.15))
+			end
+			if not wasOn then
+				setFixture(f, false)
+			end
+		end
+	end)
+end
+
+function LightingRig.init(builtMap: any)
+	map = builtMap
+
+	-- Base de la atmósfera. Se define aquí (y no solo en el archivo de lugar)
+	-- para que el juego se vea igual sin importar cómo se haya instalado.
+	-- `Lighting.Technology` es la única propiedad que debe fijarse en Studio.
+	Lighting.ClockTime = 0
+	Lighting.GlobalShadows = true
+	Lighting.EnvironmentDiffuseScale = 0.2
+	Lighting.EnvironmentSpecularScale = 0.35
+	Lighting.ExposureCompensation = 0
+	Lighting.OutdoorAmbient = Color3.fromRGB(8, 8, 13)
+	Lighting.FogColor = Color3.fromRGB(6, 6, 8)
+	Lighting.FogStart = 60
+	Lighting.FogEnd = 420
+	Lighting.ShadowSoftness = 0.25
+
+	local atmosphere = Instance.new("Atmosphere")
+	atmosphere.Density = 0.3
+	atmosphere.Offset = 0
+	atmosphere.Color = Color3.fromRGB(180, 180, 190)
+	atmosphere.Decay = Color3.fromRGB(60, 60, 70)
+	atmosphere.Haze = 1
+	atmosphere.Parent = Lighting
+
+	cc = Instance.new("ColorCorrectionEffect")
+	cc.Name = "LHM_CC"
+	cc.Parent = Lighting
+
+	startFlickerLoop()
+	LightingRig.setPhase("TARDE")
+end
+
+function LightingRig.setPhase(phase: string)
+	currentPhase = phase
+	local def = PHASE_LIGHTING[phase]
+	if not def then
+		return
+	end
+
+	TweenService:Create(Lighting, TweenInfo.new(3), {
+		Ambient = def.Ambient,
+		Brightness = def.Brightness,
+	}):Play()
+	TweenService:Create(cc, TweenInfo.new(3), def.cc):Play()
+
+	table.clear(flickerSet)
+
+	if phase == "TARDE" then
+		for _, f in map.fixtures do
+			setFixture(f, true)
+		end
+	elseif phase == "CIERRE" then
+		for i, f in map.fixtures do
+			if f.zone == "apt" or f.zone == "service" then
+				setFixture(f, true)
+			elseif f.zone == "locale" then
+				-- Las apaga el cierre de cada persiana (GameLoop).
+			else
+				if rng:NextNumber() &lt; 0.3 then
+					setFixture(f, false)
+				else
+					setFixture(f, true)
+					if rng:NextNumber() &lt; 0.25 then
+						table.insert(flickerSet, f)
+					end
+				end
+			end
+		end
+	elseif phase == "PROHIBIDA" then
+		local count = 0
+		for _, f in map.fixtures do
+			if f.zone == "apt" then
+				setFixture(f, true) -- los departamentos siguen siendo hogar
+			elseif f.zone == "locale" then
+				setFixture(f, false)
+			elseif f.zone == "service" then
+				setFixture(f, true, Color3.fromRGB(190, 240, 190), 0.5)
+			else
+				count += 1
+				if count % 3 == 0 then
+					setFixture(f, true, COLD, 0.6)
+					if rng:NextNumber() &lt; 0.5 then
+						table.insert(flickerSet, f)
+					end
+				else
+					setFixture(f, false)
+				end
+			end
+		end
+	end
+end
+
+-- Apaga la luminaria de un local (cuando baja su persiana).
+function LightingRig.localeOff(fixture: any)
+	setFixture(fixture, false)
+end
+
+function LightingRig.localeOn(fixture: any)
+	setFixture(fixture, true)
+end
+
+return LightingRig
+</ProtectedString>
+        </Properties>
+      </Item>
+      <Item class="Script" referent="RBX15">
+        <Properties>
+          <string name="Name">Main</string>
+          <ProtectedString name="Source">--!strict
+-- Punto de entrada del servidor de "La Hora del Mercado".
+
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local SoundService = game:GetService("SoundService")
+local StarterPlayer = game:GetService("StarterPlayer")
+
+-- Crear los remotos antes de que cualquier cliente los busque.
+require(ReplicatedStorage.Shared.Remotes)
+local Config = require(ReplicatedStorage.Shared.Config)
+
+local MapBuilder = require(script.Parent.MapBuilder)
+local LightingRig = require(script.Parent.LightingRig)
+local PlayerSession = require(script.Parent.PlayerSession)
+local NPCSystem = require(script.Parent.NPCSystem)
+local Footsteps = require(script.Parent.Footsteps)
+local Corre = require(script.Parent.Entities.Corre)
+local GameLoop = require(script.Parent.GameLoop)
+
+-- Los jugadores no reaparecen solos: el GameLoop decide cuándo y dónde.
+Players.CharacterAutoLoads = false
+Players.RespawnTime = 9999
+
+pcall(function()
+	SoundService.AmbientReverb = Enum.ReverbType.Hangar
+	SoundService.DistanceFactor = 3.33
+	StarterPlayer.CharacterWalkSpeed = Config.WalkSpeed
+	StarterPlayer.CharacterJumpHeight = 0
+	StarterPlayer.EnableMouseLockOption = false
+end)
+
+print(("[LaHoraDelMercado] v%s — construyendo el bazar..."):format(Config.Version))
+
+local map = MapBuilder.build()
+LightingRig.init(map)
+PlayerSession.init(map)
+Footsteps.init()
+NPCSystem.init(map)
+Corre.init(map)
+GameLoop.start(map)
+
+print("[LaHoraDelMercado] Listo. El bazar abre a las 18:00.")
+</ProtectedString>
+          <bool name="Disabled">false</bool>
+        </Properties>
+      </Item>
+      <Item class="ModuleScript" referent="RBX16">
+        <Properties>
+          <string name="Name">MapBuilder</string>
+          <ProtectedString name="Source">--!strict
+-- Construye proceduralmente el complejo: un piso del bazar con 12 locales,
+-- el bloque de departamentos, la escuela de idiomas, pasillos de servicio,
+-- cuartos de mantenimiento (refugios) y toda la iluminación y señalización.
+--
+-- Sistema de coordenadas (vista superior, Y hacia arriba):
+--   · Pasillo principal del bazar: a lo largo de X, z ∈ [-8, 8], x ∈ [-92, 92]
+--   · Departamentos: al norte (z negativo)
+--   · Escuela de idiomas: al sur (z positivo)
+--   · Pasillo de servicio: detrás de los locales sur, z ∈ [30, 38]
+-- El techo interior está a Y = 12.
+
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local TweenService = game:GetService("TweenService")
+
+local Config = require(ReplicatedStorage.Shared.Config)
+local SoundUtil = require(ReplicatedStorage.Shared.SoundUtil)
+
+local H = 12 -- altura interior
+local WALL_T = 1 -- grosor de muros
+
+-- ── Paleta ───────────────────────────────────────────────────────────────────
+local STYLE = {
+	corridorFloor = { Color3.fromRGB(186, 183, 175), Enum.Material.Concrete },
+	wall = { Color3.fromRGB(219, 215, 204), Enum.Material.Concrete },
+	ceiling = { Color3.fromRGB(148, 148, 151), Enum.Material.Concrete },
+	localeFloor = { Color3.fromRGB(158, 149, 137), Enum.Material.Concrete },
+	aptFloor = { Color3.fromRGB(143, 112, 82), Enum.Material.WoodPlanks },
+	aptWall = { Color3.fromRGB(210, 199, 178), Enum.Material.Concrete },
+	schoolFloor = { Color3.fromRGB(168, 173, 168), Enum.Material.Concrete },
+	serviceFloor = { Color3.fromRGB(108, 108, 110), Enum.Material.Concrete },
+	serviceWall = { Color3.fromRGB(128, 130, 126), Enum.Material.Concrete },
+	persiana = { Color3.fromRGB(138, 138, 143), Enum.Material.DiamondPlate },
+	metalDoor = { Color3.fromRGB(96, 102, 108), Enum.Material.Metal },
+	woodDoor = { Color3.fromRGB(105, 78, 54), Enum.Material.Wood },
+	counter = { Color3.fromRGB(122, 94, 68), Enum.Material.Wood },
+	column = { Color3.fromRGB(196, 192, 182), Enum.Material.Concrete },
+}
+
+export type Region = { x0: number, x1: number, z0: number, z1: number }
+
+local MapBuilder = {}
+
+-- ── Helpers básicos ──────────────────────────────────────────────────────────
+
+local function part(parent: Instance, name: string, size: Vector3, cf: CFrame, style: { any }, extra: { [string]: any }?): Part
+	local p = Instance.new("Part")
+	p.Name = name
+	p.Anchored = true
+	p.Size = size
+	p.CFrame = cf
+	p.Color = style[1]
+	p.Material = style[2]
+	p.TopSurface = Enum.SurfaceType.Smooth
+	p.BottomSurface = Enum.SurfaceType.Smooth
+	if extra then
+		for k, v in extra do
+			(p :: any)[k] = v
+		end
+	end
+	p.Parent = parent
+	return p
+end
+
+local function floorSlab(parent: Instance, name: string, x0: number, x1: number, z0: number, z1: number, style: { any })
+	part(parent, name, Vector3.new(x1 - x0, 1, z1 - z0), CFrame.new((x0 + x1) / 2, -0.5, (z0 + z1) / 2), style)
+end
+
+local function ceilSlab(parent: Instance, name: string, x0: number, x1: number, z0: number, z1: number)
+	part(parent, name, Vector3.new(x1 - x0, 1, z1 - z0), CFrame.new((x0 + x1) / 2, H + 0.5, (z0 + z1) / 2), STYLE.ceiling)
+end
+
+type Gap = { center: number, width: number, height: number }
+
+-- Muro a lo largo de un eje con huecos (puertas / accesos) y dinteles.
+-- axis = "x": el muro corre a lo largo de X en z = fixed.
+-- axis = "z": el muro corre a lo largo de Z en x = fixed.
+local function wallRun(parent: Instance, name: string, axis: string, a0: number, a1: number, fixed: number, gaps: { Gap }?, style: { any }?)
+	local st = style or STYLE.wall
+	local list: { Gap } = gaps or {}
+	table.sort(list, function(a: Gap, b: Gap)
+		return a.center &lt; b.center
+	end)
+
+	local function segment(s0: number, s1: number, y0: number, y1: number)
+		local len = s1 - s0
+		if len &lt; 0.05 or (y1 - y0) &lt; 0.05 then
+			return
+		end
+		local mid = (s0 + s1) / 2
+		local yMid = (y0 + y1) / 2
+		if axis == "x" then
+			part(parent, name, Vector3.new(len, y1 - y0, WALL_T), CFrame.new(mid, yMid, fixed), st)
+		else
+			part(parent, name, Vector3.new(WALL_T, y1 - y0, len), CFrame.new(fixed, yMid, mid), st)
+		end
+	end
+
+	local cursor = a0
+	for _, gap in list do
+		local g0 = gap.center - gap.width / 2
+		local g1 = gap.center + gap.width / 2
+		segment(cursor, g0, 0, H)
+		segment(g0, g1, gap.height, H) -- dintel
+		cursor = g1
+	end
+	segment(cursor, a1, 0, H)
+end
+
+local function makeRegion(x0: number, x1: number, z0: number, z1: number): Region
+	return { x0 = x0, x1 = x1, z0 = z0, z1 = z1 }
+end
+
+local function regionContains(region: Region, pos: Vector3): boolean
+	return pos.X &gt;= region.x0 and pos.X &lt;= region.x1 and pos.Z &gt;= region.z0 and pos.Z &lt;= region.z1
+end
+
+local function regionCenter(region: Region): Vector3
+	return Vector3.new((region.x0 + region.x1) / 2, 0, (region.z0 + region.z1) / 2)
+end
+
+-- ── Señalización ─────────────────────────────────────────────────────────────
+
+local function makeSign(parent: Instance, text: string, cf: CFrame, width: number, height: number, textColor: Color3?, bgColor: Color3?, neon: boolean?)
+	local sign = part(parent, "Letrero", Vector3.new(width, height, 0.3), cf, {
+		bgColor or Color3.fromRGB(38, 36, 34),
+		neon and Enum.Material.Neon or Enum.Material.SmoothPlastic,
+	}, { CanCollide = false, CanQuery = false })
+	for _, face in { Enum.NormalId.Front, Enum.NormalId.Back } do
+		local gui = Instance.new("SurfaceGui")
+		gui.Face = face
+		gui.CanvasSize = Vector2.new(width * 50, height * 50)
+		gui.LightInfluence = neon and 0 or 0.6
+		gui.Brightness = neon and 2 or 1
+		local label = Instance.new("TextLabel")
+		label.Size = UDim2.fromScale(1, 1)
+		label.BackgroundTransparency = 1
+		label.Font = Enum.Font.Oswald
+		label.TextScaled = true
+		label.Text = text
+		label.TextColor3 = textColor or Color3.fromRGB(235, 228, 210)
+		label.Parent = gui
+		gui.Parent = sign
+	end
+	return sign
+end
+
+-- ── Luminarias ───────────────────────────────────────────────────────────────
+
+export type Fixture = {
+	tube: Part,
+	light: PointLight,
+	zone: string,
+	baseColor: Color3,
+	baseBrightness: number,
+}
+
+local function fixture(parent: Instance, fixtures: { Fixture }, x: number, z: number, zone: string, color: Color3?)
+	local c = color or Color3.fromRGB(255, 244, 219)
+	local noBlock = { CanCollide = false, CanQuery = false }
+	part(parent, "Luminaria", Vector3.new(4.4, 0.25, 1.6), CFrame.new(x, 11.86, z), { Color3.fromRGB(222, 222, 227), Enum.Material.Metal }, noBlock)
+	local tube = part(parent, "Tubo", Vector3.new(4, 0.16, 1.1), CFrame.new(x, 11.72, z), { c, Enum.Material.Neon }, noBlock)
+	local light = Instance.new("PointLight")
+	light.Color = c
+	light.Brightness = 1.1
+	light.Range = 15
+	light.Shadows = zone == "spine" or zone == "hall"
+	light.Parent = tube
+	table.insert(fixtures, { tube = tube, light = light, zone = zone, baseColor = c, baseBrightness = 1.1 })
+end
+
+-- ── Puertas con bisagra ──────────────────────────────────────────────────────
+
+-- Puerta en un muro que corre a lo largo de X (z fija). La bisagra queda en
+-- hingeX; la hoja abre girando 105° alrededor de la bisagra.
+local function makeDoor(map: any, parent: Instance, hingeX: number, z: number, width: number, height: number, style: { any })
+	local base = CFrame.new(hingeX, height / 2, z)
+	local closedCF = base * CFrame.new(width / 2, 0, 0)
+	local openCF = base * CFrame.Angles(0, math.rad(105), 0) * CFrame.new(width / 2, 0, 0)
+
+	local panel = part(parent, "Puerta", Vector3.new(width - 0.15, height - 0.1, 0.3), closedCF, style)
+	local creak = SoundUtil.make(panel, Config.Sounds.DoorCreak, { Volume = 0.55, RollOffMaxDistance = 55, Name = "Creak" })
+
+	local prompt = Instance.new("ProximityPrompt")
+	prompt.ActionText = "Abrir"
+	prompt.ObjectText = "Puerta"
+	prompt.HoldDuration = 0.25
+	prompt.MaxActivationDistance = 7
+	prompt.RequiresLineOfSight = false
+	prompt.Parent = panel
+
+	local open = false
+	local busy = false
+	prompt.Triggered:Connect(function(player)
+		if busy then
+			return
+		end
+		busy = true
+		open = not open
+		prompt.ActionText = open and "Cerrar" or "Abrir"
+		creak:Play()
+		local tween = TweenService:Create(panel, TweenInfo.new(0.7, Enum.EasingStyle.Sine), {
+			CFrame = open and openCF or closedCF,
+		})
+		tween:Play()
+		tween.Completed:Once(function()
+			busy = false
+		end)
+		if map.onDoorUsed then
+			map.onDoorUsed(player, panel.Position)
+		end
+	end)
+	return panel
+end
+
+-- ── Persianas metálicas ──────────────────────────────────────────────────────
+
+export type Persiana = {
+	part: Part,
+	closed: boolean,
+	close: (self: Persiana, silent: boolean?) -&gt; (),
+	open: (self: Persiana) -&gt; (),
+}
+
+-- Persiana sobre un hueco en un muro que corre a lo largo de X (z fija).
+local function makePersiana(map: any, parent: Instance, centerX: number, z: number, width: number, height: number): Persiana
+	local closedCF = CFrame.new(centerX, height / 2, z)
+	local openCF = CFrame.new(centerX, height / 2 + (height - 0.6), z)
+
+	local sheet = part(parent, "Persiana", Vector3.new(width, height, 0.5), openCF, STYLE.persiana)
+	local sound = SoundUtil.make(sheet, Config.Sounds.PersianaMove, { Volume = 0.7, RollOffMaxDistance = 80, Name = "Move" })
+
+	local prompt = Instance.new("ProximityPrompt")
+	prompt.ActionText = "Bajar persiana"
+	prompt.ObjectText = "Persiana metálica"
+	prompt.HoldDuration = 1.2
+	prompt.MaxActivationDistance = 9
+	prompt.RequiresLineOfSight = false
+	prompt.Parent = sheet
+
+	local persiana = {} :: any
+	persiana.part = sheet
+	persiana.closed = false
+	local busy = false
+
+	local function slide(toClosed: boolean, silent: boolean?)
+		if busy or persiana.closed == toClosed then
+			return
+		end
+		busy = true
+		persiana.closed = toClosed
+		prompt.ActionText = toClosed and "Levantar persiana (ruidoso)" or "Bajar persiana"
+		if not silent then
+			sound:Play()
+		end
+		local tween = TweenService:Create(sheet, TweenInfo.new(2.1, Enum.EasingStyle.Sine), {
+			CFrame = toClosed and closedCF or openCF,
+		})
+		tween:Play()
+		tween.Completed:Once(function()
+			busy = false
+		end)
+	end
+
+	function persiana.close(_self, silent: boolean?)
+		slide(true, silent)
+	end
+	function persiana.open(_self)
+		slide(false)
+	end
+
+	prompt.Triggered:Connect(function(player)
+		local target = not persiana.closed
+		slide(target)
+		if map.onPersianaUsed then
+			map.onPersianaUsed(player, sheet.Position)
+		end
+	end)
+
+	return persiana :: Persiana
+end
+
+-- ── Mobiliario ───────────────────────────────────────────────────────────────
+
+local rng = Random.new()
+
+local BOX_COLORS = {
+	Color3.fromRGB(148, 116, 84),
+	Color3.fromRGB(120, 96, 72),
+	Color3.fromRGB(96, 104, 118),
+	Color3.fromRGB(134, 128, 96),
+}
+
+local function clutterBox(parent: Instance, x: number, z: number)
+	local s = rng:NextNumber(1.4, 2.6)
+	part(parent, "Caja", Vector3.new(s, s, s), CFrame.new(x, s / 2, z) * CFrame.Angles(0, rng:NextNumber(0, math.pi), 0), {
+		BOX_COLORS[rng:NextInteger(1, #BOX_COLORS)],
+		Enum.Material.SmoothPlastic,
+	})
+end
+
+local function furnishLocale(parent: Instance, cx: number, z0: number, z1: number)
+	-- Mostrador cerca de la entrada y estantería al fondo, con productos.
+	local depth = z1 - z0
+	-- La entrada del local es el borde más cercano al pasillo principal (z = 0);
+	-- `sign` apunta hacia el fondo del local.
+	local frontZ, sign
+	if math.abs(z0) &gt; math.abs(z1) then
+		frontZ, sign = z1, -1 -- local del lado norte
+	else
+		frontZ, sign = z0, 1 -- local del lado sur
+	end
+	local counterZ = frontZ + sign * 5
+	part(parent, "Mostrador", Vector3.new(10, 3.2, 2.4), CFrame.new(cx, 1.6, counterZ), STYLE.counter)
+	local backZ = frontZ + sign * (depth - 2.5)
+	part(parent, "Estante", Vector3.new(14, 6.5, 1.4), CFrame.new(cx, 3.25, backZ), { Color3.fromRGB(88, 74, 60), Enum.Material.Wood })
+	for i = 1, 4 do
+		local bx = cx - 6 + i * 2.6
+		part(parent, "Producto", Vector3.new(1.6, 1.6, 1.1), CFrame.new(bx, 6.9, backZ), {
+			BOX_COLORS[rng:NextInteger(1, #BOX_COLORS)],
+			Enum.Material.SmoothPlastic,
+		})
+	end
+end
+
+local function furnishApartment(parent: Instance, cx: number, z0: number, z1: number)
+	local midZ = (z0 + z1) / 2
+	-- Cama, mesa y una lámpara cálida.
+	part(parent, "Cama", Vector3.new(5.5, 1.6, 8), CFrame.new(cx - 4.4, 0.8, z0 + 5), { Color3.fromRGB(90, 62, 48), Enum.Material.Wood })
+	part(parent, "Colchon", Vector3.new(5.1, 0.8, 7.4), CFrame.new(cx - 4.4, 2, z0 + 5), { Color3.fromRGB(205, 198, 182), Enum.Material.Fabric })
+	part(parent, "Mesa", Vector3.new(4, 0.4, 2.6), CFrame.new(cx + 4.6, 2.6, midZ), STYLE.counter)
+	for _, off in { Vector3.new(-1.6, 0, -1), Vector3.new(1.6, 0, -1), Vector3.new(-1.6, 0, 1), Vector3.new(1.6, 0, 1) } do
+		part(parent, "PataMesa", Vector3.new(0.4, 2.4, 0.4), CFrame.new(cx + 4.6 + off.X, 1.2, midZ + off.Z), STYLE.counter)
+	end
+	local lampBase = part(parent, "Lampara", Vector3.new(0.8, 1.4, 0.8), CFrame.new(cx + 4.6, 3.5, midZ), { Color3.fromRGB(232, 210, 160), Enum.Material.Neon })
+	local light = Instance.new("PointLight")
+	light.Color = Color3.fromRGB(255, 214, 150)
+	light.Brightness = 0.9
+	light.Range = 13
+	light.Shadows = true
+	light.Parent = lampBase
+end
+
+local function furnishClassroom(parent: Instance, x0: number, x1: number, z0: number, z1: number, posterText: string)
+	local cx = (x0 + x1) / 2
+	-- Pizarrón al fondo (muro sur del salón, z1) y pupitres.
+	part(parent, "Pizarron", Vector3.new(10, 4, 0.3), CFrame.new(cx, 5.2, z1 - 0.8), { Color3.fromRGB(235, 235, 232), Enum.Material.SmoothPlastic })
+	for row = 0, 1 do
+		for col = 0, 2 do
+			local dx = x0 + 4.5 + col * 5.5
+			local dz = z0 + 5 + row * 5
+			part(parent, "Pupitre", Vector3.new(2.6, 0.3, 1.8), CFrame.new(dx, 2.4, dz), STYLE.counter)
+			part(parent, "PataPupitre", Vector3.new(0.35, 2.25, 0.35), CFrame.new(dx, 1.15, dz), { Color3.fromRGB(70, 70, 74), Enum.Material.Metal })
+			part(parent, "Silla", Vector3.new(1.8, 1.6, 1.6), CFrame.new(dx, 0.8, dz + 1.9), { Color3.fromRGB(140, 60, 50), Enum.Material.SmoothPlastic })
+		end
+	end
+	makeSign(parent, posterText, CFrame.new(cx - 6, 7.5, z1 - 0.85), 4, 2.4, Color3.fromRGB(240, 236, 220), Color3.fromRGB(70, 92, 120), false)
+end
+
+local function furnishMaintenance(parent: Instance, x0: number, x1: number, z0: number, z1: number)
+	local cx = (x0 + x1) / 2
+	part(parent, "EstanteMetal", Vector3.new(1.2, 7, (z1 - z0) - 3), CFrame.new(x0 + 1.2, 3.5, (z0 + z1) / 2), { Color3.fromRGB(92, 96, 100), Enum.Material.Metal })
+	part(parent, "Tuberia", Vector3.new(0.6, 0.6, (z1 - z0) - 1), CFrame.new(x1 - 1, 10.6, (z0 + z1) / 2), { Color3.fromRGB(120, 110, 96), Enum.Material.Metal })
+	for i = 1, 3 do
+		clutterBox(parent, cx + rng:NextNumber(-2, 2), z0 + 3 + i * 2.2)
+	end
+	-- Lámpara roja tenue de emergencia (independiente del sistema de fases).
+	local lamp = part(parent, "LamparaEmergencia", Vector3.new(0.9, 0.5, 0.9), CFrame.new(cx, 11.5, (z0 + z1) / 2), { Color3.fromRGB(180, 40, 36), Enum.Material.Neon })
+	local light = Instance.new("PointLight")
+	light.Color = Color3.fromRGB(255, 70, 60)
+	light.Brightness = 0.7
+	light.Range = 12
+	light.Parent = lamp
+end
+
+-- ── Construcción principal ───────────────────────────────────────────────────
+
+function MapBuilder.build()
+	local root = Instance.new("Model")
+	root.Name = "LaHoraDelMercado"
+
+	local geo = Instance.new("Folder")
+	geo.Name = "Geometria"
+	geo.Parent = root
+
+	local map = {} :: any
+	map.model = root
+	map.fixtures = {} :: { Fixture }
+	map.locales = {}
+	map.apartments = {}
+	map.refugeRegions = {} :: { Region }
+	map.sealCandidates = {}
+	map.patrolPoints = {} :: { Vector3 }
+	map.npcSpawns = {} :: { Vector3 }
+	map.regionContains = regionContains
+	map.onDoorUsed = nil
+	map.onPersianaUsed = nil
+
+	local fixtures = map.fixtures
+
+	-- ════ Pasillo principal del bazar (la "espina") ════
+	local spine = Instance.new("Folder")
+	spine.Name = "PasilloPrincipal"
+	spine.Parent = geo
+
+	floorSlab(spine, "Piso", -92, 92, -8, 8, STYLE.corridorFloor)
+	ceilSlab(spine, "Techo", -92, 92, -8, 8)
+
+	local localeXs = { -72, -48, -24, 24, 48, 72 }
+
+	-- Muro norte: huecos de 6 locales + acceso al corredor de departamentos.
+	local northGaps: { Gap } = { { center = 0, width = 12, height = 9 } }
+	for _, cx in localeXs do
+		table.insert(northGaps, { center = cx, width = 12, height = 8 })
+	end
+	wallRun(spine, "MuroNorte", "x", -92, 92, -8, northGaps)
+
+	-- Muro sur: 6 locales + acceso a la escuela + pasajes de servicio en los extremos.
+	local southGaps: { Gap } = {
+		{ center = 0, width = 12, height = 9 },
+		{ center = -88, width = 7, height = 9 },
+		{ center = 88, width = 7, height = 9 },
+	}
+	for _, cx in localeXs do
+		table.insert(southGaps, { center = cx, width = 12, height = 8 })
+	end
+	wallRun(spine, "MuroSur", "x", -92, 92, 8, southGaps)
+
+	-- Extremos.
+	wallRun(spine, "MuroOeste", "z", -8, 8, -92)
+	wallRun(spine, "MuroEste", "z", -8, 8, 92)
+
+	-- Columnas y bancas para romper la monotonía del pasillo.
+	for _, cx in { -60, -36, -12, 12, 36, 60 } do
+		part(spine, "Columna", Vector3.new(2, H, 2), CFrame.new(cx, H / 2, -6.2), STYLE.column)
+		part(spine, "Columna", Vector3.new(2, H, 2), CFrame.new(cx, H / 2, 6.2), STYLE.column)
+	end
+	for _, cx in { -36, 36 } do
+		part(spine, "Banca", Vector3.new(6, 1.6, 2), CFrame.new(cx, 0.8, 0), { Color3.fromRGB(110, 86, 62), Enum.Material.Wood })
+		part(spine, "Macetero", Vector3.new(2.2, 2, 2.2), CFrame.new(cx + 5, 1, 0), { Color3.fromRGB(140, 82, 60), Enum.Material.Concrete })
+		part(spine, "Planta", Vector3.new(2.6, 3, 2.6), CFrame.new(cx + 5, 3.4, 0), { Color3.fromRGB(52, 96, 54), Enum.Material.Grass })
+	end
+
+	-- Reja de "salida" (siempre cerrada: ambienta, no es funcional).
+	part(spine, "RejaSalida", Vector3.new(0.5, 10, 15), CFrame.new(91.3, 5, 0), STYLE.persiana)
+	local exitSign = makeSign(spine, "SALIDA", CFrame.new(89.5, 10.8, 0) * CFrame.Angles(0, math.rad(90), 0), 6, 1.6, Color3.fromRGB(120, 255, 140), Color3.fromRGB(12, 40, 16), true)
+	map.exitSign = exitSign
+
+	-- Señalización colgante del cruce central.
+	makeSign(spine, "← DEPARTAMENTOS", CFrame.new(0, 10, -6.8), 12, 1.4)
+	makeSign(spine, "ESCUELA DE IDIOMAS →", CFrame.new(0, 10, 6.8), 12, 1.4)
+	makeSign(spine, "BAZAR EL CENTENARIO", CFrame.new(0, 10.8, 0), 18, 1.8, Color3.fromRGB(240, 210, 140), Color3.fromRGB(50, 32, 24), false)
+
+	for x = -84, 84, 12 do
+		fixture(spine, fixtures, x, 0, "spine")
+		table.insert(map.patrolPoints, Vector3.new(x, 0, 0))
+		if x % 24 == 0 then
+			table.insert(map.npcSpawns, Vector3.new(x, 0, rng:NextNumber(-4, 4)))
+		end
+	end
+
+	map.viejoSpawn = CFrame.new(-86, 0, 0)
+
+	-- ════ Locales del bazar ════
+	local localesFolder = Instance.new("Folder")
+	localesFolder.Name = "Locales"
+	localesFolder.Parent = geo
+
+	local nameIndex = 0
+	local function buildLocale(cx: number, north: boolean)
+		nameIndex += 1
+		local name = Config.LocaleNames[nameIndex] or ("Local " .. nameIndex)
+		local lf = Instance.new("Model")
+		lf.Name = name
+		lf.Parent = localesFolder
+
+		local z0, z1
+		if north then
+			z0, z1 = -30, -8
+		else
+			z0, z1 = 8, 30
+		end
+		local x0, x1 = cx - 10, cx + 10
+
+		floorSlab(lf, "Piso", x0, x1, z0, z1, STYLE.localeFloor)
+		ceilSlab(lf, "Techo", x0, x1, z0, z1)
+		wallRun(lf, "MuroLateral", "z", z0, z1, x0)
+		wallRun(lf, "MuroLateral", "z", z0, z1, x1)
+		-- Muro trasero (el frontal con su hueco ya lo puso la espina).
+		wallRun(lf, "MuroFondo", "x", x0, x1, north and z0 or z1)
+
+		furnishLocale(lf, cx, z0, z1)
+
+		local frontZ = north and -8 or 8
+		local persiana = makePersiana(map, lf, cx, frontZ, 12, 8)
+		local signZ = north and (frontZ - 0.4) or (frontZ + 0.4)
+		makeSign(lf, name, CFrame.new(cx, 9.6, signZ), 13, 2, Color3.fromRGB(238, 226, 198), Color3.fromRGB(52, 40, 32), false)
+
+		fixture(lf, fixtures, cx, (z0 + z1) / 2, "locale")
+		local localeFixture = fixtures[#fixtures]
+
+		local interiorZ = north and (z0 + 8) or (z1 - 8)
+		table.insert(map.locales, {
+			name = name,
+			model = lf,
+			persiana = persiana,
+			fixture = localeFixture,
+			region = makeRegion(x0 + 1, x1 - 1, math.min(z0, z1) + 1, math.max(z0, z1) - 1),
+			packageSpot = Vector3.new(cx + 3, 3.4, north and (frontZ - 6.2) or (frontZ + 6.2)),
+			interiorPoint = Vector3.new(cx, 0, interiorZ),
+		})
+	end
+
+	for _, cx in localeXs do
+		buildLocale(cx, true)
+	end
+	for _, cx in localeXs do
+		buildLocale(cx, false)
+	end
+
+	-- ════ Corredor norte hacia los departamentos ════
+	local north = Instance.new("Folder")
+	north.Name = "CorredorNorte"
+	north.Parent = geo
+
+	floorSlab(north, "Piso", -6, 6, -70, -8, STYLE.corridorFloor)
+	ceilSlab(north, "Techo", -6, 6, -70, -8)
+	wallRun(north, "MuroOeste", "z", -70, -8, -6)
+	wallRun(north, "MuroEste", "z", -70, -8, 6)
+
+	for z = -18, -62, -12 do
+		fixture(north, fixtures, 0, z, "corr")
+		table.insert(map.patrolPoints, Vector3.new(0, 0, z))
+	end
+	makeSign(north, "DEPARTAMENTOS ↑", CFrame.new(0, 10, -38), 10, 1.3)
+
+	-- ════ Corredor de departamentos ════
+	local hall = Instance.new("Folder")
+	hall.Name = "PasilloDepartamentos"
+	hall.Parent = geo
+
+	floorSlab(hall, "Piso", -56, 56, -82, -70, STYLE.corridorFloor)
+	ceilSlab(hall, "Techo", -56, 56, -82, -70)
+
+	local aptXs = { -45, -27, -9, 9, 27, 45 }
+	local aptGaps: { Gap } = {}
+	for _, cx in aptXs do
+		table.insert(aptGaps, { center = cx, width = 4, height = 7 })
+	end
+	wallRun(hall, "MuroNorte", "x", -56, 56, -82, aptGaps)
+	wallRun(hall, "MuroSur", "x", -56, 56, -70, { { center = 0, width = 12, height = 9 } })
+	wallRun(hall, "MuroOeste", "z", -82, -70, -56)
+	wallRun(hall, "MuroEste", "z", -82, -70, 56)
+
+	for x = -48, 48, 16 do
+		fixture(hall, fixtures, x, -76, "hall")
+		table.insert(map.patrolPoints, Vector3.new(x, 0, -76))
+	end
+
+	-- ════ Departamentos ════
+	local aptsFolder = Instance.new("Folder")
+	aptsFolder.Name = "Departamentos"
+	aptsFolder.Parent = geo
+
+	for i, cx in aptXs do
+		local m = Instance.new("Model")
+		m.Name = "Departamento" .. (100 + i)
+		m.Parent = aptsFolder
+
+		local x0, x1 = cx - 8, cx + 8
+		local z0, z1 = -100, -82
+		floorSlab(m, "Piso", x0, x1, z0, z1, STYLE.aptFloor)
+		ceilSlab(m, "Techo", x0, x1, z0, z1)
+		wallRun(m, "MuroLateral", "z", z0, z1, x0, nil, STYLE.aptWall)
+		wallRun(m, "MuroLateral", "z", z0, z1, x1, nil, STYLE.aptWall)
+		wallRun(m, "MuroFondo", "x", x0, x1, z0, nil, STYLE.aptWall)
+
+		furnishApartment(m, cx, z0, z1)
+		makeDoor(map, m, cx - 2, -82, 4, 7, STYLE.woodDoor)
+		makeSign(m, tostring(100 + i), CFrame.new(cx + 3.4, 8, -81.6), 1.6, 1.2, Color3.fromRGB(220, 210, 190), Color3.fromRGB(60, 48, 38), false)
+
+		fixture(m, fixtures, cx, -91, "apt", Color3.fromRGB(255, 226, 178))
+
+		local region = makeRegion(x0 + 1, x1 - 1, z0 + 1, z1 - 1)
+		table.insert(map.refugeRegions, region)
+		table.insert(map.apartments, {
+			index = i,
+			name = "Departamento " .. (100 + i),
+			spawnCF = CFrame.new(cx, 3.5, -91) * CFrame.Angles(0, math.rad(180), 0),
+			region = region,
+			doorPos = Vector3.new(cx, 0, -82),
+		})
+	end
+
+	-- ════ Corredor sur hacia la escuela ════
+	local south = Instance.new("Folder")
+	south.Name = "CorredorSur"
+	south.Parent = geo
+
+	floorSlab(south, "Piso", -6, 6, 8, 48, STYLE.corridorFloor)
+	ceilSlab(south, "Techo", -6, 6, 8, 48)
+	-- Huecos donde cruza el pasillo de servicio (z ∈ [30, 38]).
+	wallRun(south, "MuroOeste", "z", 8, 48, -6, { { center = 34, width = 8, height = 9 } })
+	wallRun(south, "MuroEste", "z", 8, 48, 6, { { center = 34, width = 8, height = 9 } })
+
+	for z = 14, 44, 10 do
+		fixture(south, fixtures, 0, z, "corr")
+		table.insert(map.patrolPoints, Vector3.new(0, 0, z))
+	end
+
+	-- ════ Escuela de idiomas ════
+	local school = Instance.new("Folder")
+	school.Name = "EscuelaDeIdiomas"
+	school.Parent = geo
+
+	-- Recepción / lobby.
+	floorSlab(school, "PisoLobby", -30, 30, 48, 60, STYLE.schoolFloor)
+	ceilSlab(school, "TechoLobby", -30, 30, 48, 60)
+	wallRun(school, "MuroNorte", "x", -30, 30, 48, { { center = 0, width = 12, height = 9 } })
+	local classGaps: { Gap } = {
+		{ center = -20, width = 5, height = 8 },
+		{ center = 0, width = 5, height = 8 },
+		{ center = 20, width = 5, height = 8 },
+	}
+	wallRun(school, "MuroSur", "x", -30, 30, 60, classGaps)
+	wallRun(school, "MuroOeste", "z", 48, 60, -30)
+	wallRun(school, "MuroEste", "z", 48, 60, 30)
+	part(school, "Recepcion", Vector3.new(9, 3.4, 2.4), CFrame.new(12, 1.7, 52), STYLE.counter)
+	makeSign(school, "ESCUELA DE IDIOMAS «BABEL»", CFrame.new(0, 10, 48.6), 20, 1.8, Color3.fromRGB(210, 228, 250), Color3.fromRGB(34, 48, 70), false)
+
+	fixture(school, fixtures, -15, 54, "school")
+	fixture(school, fixtures, 15, 54, "school")
+	table.insert(map.patrolPoints, Vector3.new(0, 0, 54))
+
+	-- Salones.
+	local classDefs = {
+		{ x0 = -30, x1 = -10, poster = "HELLO!" },
+		{ x0 = -10, x1 = 10, poster = "BONJOUR" },
+		{ x0 = 10, x1 = 30, poster = "こんにちは" },
+	}
+	for i, def in classDefs do
+		local m = Instance.new("Model")
+		m.Name = "Salon" .. i
+		m.Parent = school
+		floorSlab(m, "Piso", def.x0, def.x1, 60, 78, STYLE.schoolFloor)
+		ceilSlab(m, "Techo", def.x0, def.x1, 60, 78)
+		wallRun(m, "MuroLateral", "z", 60, 78, def.x0)
+		wallRun(m, "MuroLateral", "z", 60, 78, def.x1)
+		wallRun(m, "MuroFondo", "x", def.x0, def.x1, 78)
+		furnishClassroom(m, def.x0, def.x1, 60, 78, def.poster)
+		makeDoor(map, m, (def.x0 + def.x1) / 2 - 2.5, 60, 5, 8, STYLE.woodDoor)
+		fixture(m, fixtures, (def.x0 + def.x1) / 2, 69, "school")
+	end
+
+	-- ════ Pasillo de servicio ════
+	local service = Instance.new("Folder")
+	service.Name = "PasilloServicio"
+	service.Parent = geo
+
+	floorSlab(service, "Piso", -92, 92, 30, 38, STYLE.serviceFloor)
+	ceilSlab(service, "Techo", -92, 92, 30, 38)
+	-- Muro norte: huecos hacia los pasajes de los extremos y el corredor sur.
+	wallRun(service, "MuroNorte", "x", -92, 92, 30, {
+		{ center = -88, width = 7, height = 9 },
+		{ center = 88, width = 7, height = 9 },
+		{ center = 0, width = 12, height = 9 },
+	}, STYLE.serviceWall)
+	-- Muro sur: cruce del corredor sur + puertas de mantenimiento.
+	wallRun(service, "MuroSur", "x", -92, 92, 38, {
+		{ center = 0, width = 12, height = 9 },
+		{ center = -60, width = 4, height = 7 },
+		{ center = 60, width = 4, height = 7 },
+	}, STYLE.serviceWall)
+	wallRun(service, "MuroOeste", "z", 30, 38, -92, nil, STYLE.serviceWall)
+	wallRun(service, "MuroEste", "z", 30, 38, 92, nil, STYLE.serviceWall)
+
+	for x = -84, 84, 24 do
+		fixture(service, fixtures, x, 34, "service", Color3.fromRGB(214, 244, 214))
+		table.insert(map.patrolPoints, Vector3.new(x, 0, 34))
+	end
+	for i = 1, 8 do
+		clutterBox(service, rng:NextNumber(-80, 80), rng:NextNumber(32, 36))
+	end
+	makeSign(service, "SOLO PERSONAL AUTORIZADO", CFrame.new(0, 10, 30.6), 14, 1.2, Color3.fromRGB(230, 190, 120), Color3.fromRGB(50, 40, 26), false)
+
+	-- Pasajes de los extremos (conectan espina ↔ servicio).
+	for _, px in { -88, 88 } do
+		local pass = Instance.new("Folder")
+		pass.Name = "Pasaje" .. (px &lt; 0 and "Oeste" or "Este")
+		pass.Parent = geo
+		local x0, x1 = px - 3.5, px + 3.5
+		floorSlab(pass, "Piso", x0, x1, 8, 30, STYLE.serviceFloor)
+		ceilSlab(pass, "Techo", x0, x1, 8, 30)
+		wallRun(pass, "MuroLateral", "z", 8, 30, x0, nil, STYLE.serviceWall)
+		wallRun(pass, "MuroLateral", "z", 8, 30, x1, nil, STYLE.serviceWall)
+		fixture(pass, fixtures, px, 19, "corr", Color3.fromRGB(214, 244, 214))
+	end
+
+	-- ════ Cuartos de mantenimiento (refugios) ════
+	local maint = Instance.new("Folder")
+	maint.Name = "Mantenimiento"
+	maint.Parent = geo
+
+	for _, cx in { -60, 60 } do
+		local m = Instance.new("Model")
+		m.Name = "Mantenimiento" .. (cx &lt; 0 and "Oeste" or "Este")
+		m.Parent = maint
+		local x0, x1 = cx - 6, cx + 6
+		local z0, z1 = 38, 50
+		floorSlab(m, "Piso", x0, x1, z0, z1, STYLE.serviceFloor)
+		ceilSlab(m, "Techo", x0, x1, z0, z1)
+		wallRun(m, "MuroLateral", "z", z0, z1, x0, nil, STYLE.serviceWall)
+		wallRun(m, "MuroLateral", "z", z0, z1, x1, nil, STYLE.serviceWall)
+		wallRun(m, "MuroFondo", "x", x0, x1, z1, nil, STYLE.serviceWall)
+		furnishMaintenance(m, x0, x1, z0, z1)
+		makeDoor(map, m, cx - 2, 38, 4, 7, STYLE.metalDoor)
+		makeSign(m, "MANTENIMIENTO", CFrame.new(cx, 8.2, 38.4), 6, 1, Color3.fromRGB(220, 210, 190), Color3.fromRGB(60, 56, 50), false)
+		table.insert(map.refugeRegions, makeRegion(x0 + 1, x1 - 1, z0 + 1, z1 - 1))
+	end
+
+	-- ════ Candidatos a sellos de "Corre" ════
+	-- Tramos de pasillo donde la entidad puede colocar sus marcas invisibles.
+	local function candidate(x0: number, x1: number, z0: number, z1: number, label: string)
+		table.insert(map.sealCandidates, { region = makeRegion(x0, x1, z0, z1), label = label })
+	end
+	for _, cx in { -60, -36, -12, 12, 36, 60 } do
+		candidate(cx - 8, cx + 8, -7.5, 7.5, "bazar")
+	end
+	candidate(-5.5, 5.5, -46, -30, "corredor norte")
+	candidate(-5.5, 5.5, -66, -50, "corredor norte")
+	candidate(-5.5, 5.5, 12, 26, "corredor sur")
+	candidate(-91.5, -84.5, 9, 29, "pasaje oeste")
+	candidate(84.5, 91.5, 9, 29, "pasaje este")
+	candidate(-40, -14, 30.5, 37.5, "servicio")
+	candidate(14, 40, 30.5, 37.5, "servicio")
+
+	-- Helpers expuestos.
+	function map.isInRefuge(pos: Vector3): boolean
+		for _, region in map.refugeRegions do
+			if regionContains(region, pos) then
+				return true
+			end
+		end
+		return false
+	end
+
+	map.regionCenter = regionCenter
+
+	-- Parpadeo perpetuo del letrero de salida (puro ambiente).
+	task.spawn(function()
+		while exitSign.Parent do
+			task.wait(rng:NextNumber(2, 7))
+			for _ = 1, rng:NextInteger(2, 5) do
+				exitSign.Transparency = 0.7
+				task.wait(0.06)
+				exitSign.Transparency = 0
+				task.wait(0.09)
+			end
+		end
+	end)
+
+	root.Parent = workspace
+	return map
+end
+
+return MapBuilder
+</ProtectedString>
+        </Properties>
+      </Item>
+      <Item class="ModuleScript" referent="RBX17">
+        <Properties>
+          <string name="Name">NPCSystem</string>
+          <ProtectedString name="Source">--!strict
+-- NPCs civiles del bazar. Durante la TARDE deambulan entre puestos;
+-- en el CIERRE muestran el "miedo colectivo": caminan rápido hacia la salida,
+-- se detienen a mirar atrás y susurran. En la HORA PROHIBIDA ya no queda nadie.
+
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local Config = require(ReplicatedStorage.Shared.Config)
+local SoundUtil = require(ReplicatedStorage.Shared.SoundUtil)
+local RigFactory = require(script.Parent.RigFactory)
+
+local NPCSystem = {}
+
+local map: any
+local rng = Random.new()
+local npcs: { { model: Model, humanoid: Humanoid, alive: boolean } } = {}
+local phase = "TARDE"
+
+local SKINS = {
+	Color3.fromRGB(224, 187, 152),
+	Color3.fromRGB(198, 158, 126),
+	Color3.fromRGB(168, 126, 96),
+	Color3.fromRGB(126, 92, 70),
+}
+local SHIRTS = {
+	Color3.fromRGB(112, 128, 144),
+	Color3.fromRGB(140, 100, 90),
+	Color3.fromRGB(96, 118, 96),
+	Color3.fromRGB(150, 140, 110),
+	Color3.fromRGB(88, 96, 128),
+}
+local PANTS = {
+	Color3.fromRGB(52, 56, 68),
+	Color3.fromRGB(70, 62, 54),
+	Color3.fromRGB(48, 66, 84),
+}
+
+-- La "salida" hacia la que huyen: el extremo este del pasillo principal.
+local EXIT_POINT = Vector3.new(86, 0, 0)
+
+local function randomPatrolPoint(): Vector3
+	return map.patrolPoints[rng:NextInteger(1, #map.patrolPoints)]
+end
+
+local function moveTo(entry: any, target: Vector3, timeout: number): boolean
+	if not entry.alive then
+		return false
+	end
+	entry.humanoid:MoveTo(target)
+	local reached = false
+	local done = false
+	local conn = entry.humanoid.MoveToFinished:Once(function(ok)
+		reached = ok
+		done = true
+	end)
+	local t0 = os.clock()
+	while not done and os.clock() - t0 &lt; timeout do
+		task.wait(0.1)
+		if not entry.alive then
+			conn:Disconnect()
+			return false
+		end
+	end
+	conn:Disconnect()
+	return reached
+end
+
+local function npcLoop(entry: any)
+	local model = entry.model
+	local humanoid = entry.humanoid
+
+	while entry.alive and model.Parent do
+		if phase == "TARDE" then
+			humanoid.WalkSpeed = Config.NPC.WalkSpeed * rng:NextNumber(0.75, 1.1)
+			local target = randomPatrolPoint() + Vector3.new(rng:NextNumber(-3, 3), 0, rng:NextNumber(-3, 3))
+			moveTo(entry, target, 14)
+			if entry.alive then
+				task.wait(rng:NextNumber(1, 5)) -- se detiene a ver aparadores
+			end
+		elseif phase == "CIERRE" then
+			-- Miedo colectivo: prisa, pausas para mirar atrás, susurros.
+			humanoid.WalkSpeed = Config.NPC.FearSpeed * rng:NextNumber(0.9, 1.1)
+			local root = model.PrimaryPart :: BasePart
+			if rng:NextNumber() &lt; 0.35 then
+				-- Mira hacia atrás un instante.
+				local back = root.Position - root.CFrame.LookVector * 4
+				model:PivotTo(CFrame.lookAt(root.Position, Vector3.new(back.X, root.Position.Y, back.Z)))
+				SoundUtil.playAt(root.Position, Config.Sounds.Whisper, 0.4, 26)
+				task.wait(rng:NextNumber(0.6, 1.4))
+			end
+			moveTo(entry, EXIT_POINT + Vector3.new(rng:NextNumber(-3, 3), 0, rng:NextNumber(-4, 4)), 20)
+			if entry.alive and model.PrimaryPart then
+				local dist = ((model.PrimaryPart :: BasePart).Position - EXIT_POINT).Magnitude
+				if dist &lt; 10 then
+					-- "Sale" del bazar: desaparece.
+					entry.alive = false
+					model:Destroy()
+					return
+				end
+			end
+		else
+			-- PROHIBIDA: nadie debería seguir aquí.
+			entry.alive = false
+			model:Destroy()
+			return
+		end
+	end
+end
+
+function NPCSystem.init(builtMap: any)
+	map = builtMap
+end
+
+function NPCSystem.spawnAll()
+	NPCSystem.cleanup()
+	phase = "TARDE"
+	for i = 1, Config.NPC.Count do
+		local model, humanoid = RigFactory.create({
+			name = "Vecino" .. i,
+			skin = SKINS[rng:NextInteger(1, #SKINS)],
+			shirt = SHIRTS[rng:NextInteger(1, #SHIRTS)],
+			pants = PANTS[rng:NextInteger(1, #PANTS)],
+			scale = rng:NextNumber(0.9, 1.05),
+			walkSpeed = Config.NPC.WalkSpeed,
+		})
+		local spawnPos = map.npcSpawns[rng:NextInteger(1, #map.npcSpawns)]
+		RigFactory.place(model, spawnPos)
+		model.Parent = workspace
+
+		local entry = { model = model, humanoid = humanoid, alive = true }
+		table.insert(npcs, entry)
+		task.spawn(npcLoop, entry)
+	end
+end
+
+function NPCSystem.setPhase(newPhase: string)
+	phase = newPhase
+	if newPhase == "CIERRE" then
+		-- Murmullo colectivo al anunciarse el cierre.
+		for _, entry in npcs do
+			if entry.alive and entry.model.PrimaryPart then
+				if rng:NextNumber() &lt; 0.4 then
+					SoundUtil.playAt((entry.model.PrimaryPart :: BasePart).Position, Config.Sounds.Whisper, 0.5, 30)
+				end
+			end
+		end
+	end
+end
+
+function NPCSystem.cleanup()
+	for _, entry in npcs do
+		entry.alive = false
+		if entry.model.Parent then
+			entry.model:Destroy()
+		end
+	end
+	table.clear(npcs)
+end
+
+return NPCSystem
+</ProtectedString>
+        </Properties>
+      </Item>
+      <Item class="ModuleScript" referent="RBX18">
+        <Properties>
+          <string name="Name">PlayerSession</string>
+          <ProtectedString name="Source">--!strict
+-- Estado por jugador: departamento asignado, encargo, ruido, vida y muerte.
+-- También gestiona sprint, linterna y la preparación de cada personaje.
+
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local Config = require(ReplicatedStorage.Shared.Config)
+local Remotes = require(ReplicatedStorage.Shared.Remotes)
+local SoundUtil = require(ReplicatedStorage.Shared.SoundUtil)
+
+local PlayerSession = {}
+
+export type State = {
+	aptIndex: number?,
+	hasPackage: boolean,
+	safe: boolean,
+	dead: boolean,
+	deathCause: string?,
+	noise: number,
+	sprinting: boolean,
+	flashlight: SpotLight?,
+}
+
+local states: { [Player]: State } = {}
+local map: any
+
+local function newState(): State
+	return {
+		aptIndex = nil,
+		hasPackage = false,
+		safe = false,
+		dead = false,
+		deathCause = nil,
+		noise = 0,
+		sprinting = false,
+		flashlight = nil,
+	}
+end
+
+function PlayerSession.get(player: Player): State
+	local st = states[player]
+	if not st then
+		st = newState()
+		states[player] = st
+	end
+	return st
+end
+
+function PlayerSession.alivePlayers(): { Player }
+	local out = {}
+	for _, player in Players:GetPlayers() do
+		local st = states[player]
+		local char = player.Character
+		if st and not st.dead and not st.safe and char and char.Parent then
+			local hum = char:FindFirstChildOfClass("Humanoid")
+			if hum and hum.Health &gt; 0 then
+				table.insert(out, player)
+			end
+		end
+	end
+	return out
+end
+
+function PlayerSession.addNoise(player: Player, amount: number)
+	local st = PlayerSession.get(player)
+	st.noise = math.min(Config.Noise.Max, st.noise + amount)
+end
+
+-- ── Muerte ───────────────────────────────────────────────────────────────────
+
+function PlayerSession.kill(player: Player, cause: string)
+	local st = PlayerSession.get(player)
+	if st.dead then
+		return
+	end
+	st.dead = true
+	st.deathCause = cause
+
+	local char = player.Character
+	if char then
+		local hum = char:FindFirstChildOfClass("Humanoid")
+		if hum and hum.Health &gt; 0 then
+			hum.Health = 0
+		end
+		local root = char:FindFirstChild("HumanoidRootPart") :: BasePart?
+		if root then
+			SoundUtil.playAt(root.Position, Config.Sounds.Scream, 0.8, 120)
+		end
+	end
+
+	player.CameraMode = Enum.CameraMode.Classic
+	Remotes.get("Death"):FireClient(player, cause)
+
+	local template = Config.DeathMessages[cause] or Config.DeathMessages.desconocido
+	Remotes.get("Toast"):FireAllClients(string.format(template, player.DisplayName), "death")
+end
+
+-- ── Preparación del personaje ────────────────────────────────────────────────
+
+local function setupCharacter(player: Player, char: Model)
+	local hum = char:WaitForChild("Humanoid", 10) :: Humanoid?
+	if not hum then
+		return
+	end
+	hum.WalkSpeed = Config.WalkSpeed
+	hum.UseJumpPower = false
+	hum.JumpHeight = 0 -- sin saltos: caminamos como personas
+	hum.DisplayDistanceType = Enum.HumanoidDisplayDistanceType.None
+	hum.HealthDisplayType = Enum.HumanoidHealthDisplayType.AlwaysOff
+	player.CameraMode = Enum.CameraMode.LockFirstPerson
+
+	hum.Died:Connect(function()
+		-- Al empezar una ronda nueva se destruye el personaje anterior; ignora
+		-- ese Died tardío para no marcar muerto a quien acaba de reaparecer.
+		if player.Character ~= char then
+			return
+		end
+		local st = PlayerSession.get(player)
+		if not st.dead then
+			-- Muerte por causas ajenas a las entidades (caídas, etc.).
+			PlayerSession.kill(player, "desconocido")
+		end
+	end)
+end
+
+-- Reaparece al jugador en su departamento asignado.
+function PlayerSession.spawnAt(player: Player, cframe: CFrame)
+	player:LoadCharacter()
+	local char = player.Character or player.CharacterAdded:Wait()
+	setupCharacter(player, char)
+	local root = char:WaitForChild("HumanoidRootPart", 10) :: BasePart?
+	if root then
+		char:PivotTo(cframe)
+	end
+end
+
+-- ── Reset de ronda ───────────────────────────────────────────────────────────
+
+function PlayerSession.resetAll()
+	for _, st in states do
+		st.hasPackage = false
+		st.safe = false
+		st.dead = false
+		st.deathCause = nil
+		st.noise = 0
+		st.sprinting = false
+		st.flashlight = nil
+	end
+end
+
+function PlayerSession.remove(player: Player)
+	states[player] = nil
+end
+
+-- ── Inicio ───────────────────────────────────────────────────────────────────
+
+function PlayerSession.init(builtMap: any)
+	map = builtMap
+
+	-- El mapa avisa cuando alguien usa puertas o persianas: eso es ruido.
+	map.onDoorUsed = function(player: Player, _pos: Vector3)
+		PlayerSession.addNoise(player, Config.Noise.Door)
+	end
+	map.onPersianaUsed = function(player: Player, _pos: Vector3)
+		PlayerSession.addNoise(player, Config.Noise.Persiana)
+	end
+
+	-- Sprint: el servidor es quien fija la velocidad (evita exploits simples).
+	Remotes.get("SprintRequest").OnServerEvent:Connect(function(player: Player, wants: any)
+		local st = PlayerSession.get(player)
+		st.sprinting = wants == true
+		local char = player.Character
+		local hum = char and char:FindFirstChildOfClass("Humanoid")
+		if hum and hum.Health &gt; 0 then
+			hum.WalkSpeed = st.sprinting and Config.SprintSpeed or Config.WalkSpeed
+		end
+	end)
+
+	-- Linterna en la cabeza, visible para todos.
+	Remotes.get("FlashlightRequest").OnServerEvent:Connect(function(player: Player)
+		local st = PlayerSession.get(player)
+		local char = player.Character
+		local head = char and char:FindFirstChild("Head")
+		if not head then
+			return
+		end
+		if st.flashlight and st.flashlight.Parent then
+			st.flashlight:Destroy()
+			st.flashlight = nil
+		else
+			local spot = Instance.new("SpotLight")
+			spot.Name = "Linterna"
+			spot.Angle = 55
+			spot.Brightness = 1.6
+			spot.Range = 34
+			spot.Color = Color3.fromRGB(255, 246, 220)
+			spot.Face = Enum.NormalId.Front
+			spot.Shadows = true
+			spot.Parent = head
+			st.flashlight = spot
+		end
+		SoundUtil.playAt((head :: BasePart).Position, Config.Sounds.Snap, 0.3, 25)
+	end)
+
+	-- Bucle de ruido: correr genera ruido; todo ruido se disipa con el tiempo.
+	task.spawn(function()
+		while true do
+			task.wait(0.25)
+			for _, player in Players:GetPlayers() do
+				local st = states[player]
+				if not st then
+					continue
+				end
+				local char = player.Character
+				local root = char and char:FindFirstChild("HumanoidRootPart") :: BasePart?
+				if root and not st.dead then
+					local v = root.AssemblyLinearVelocity
+					local speed = Vector3.new(v.X, 0, v.Z).Magnitude
+					if speed &gt; Config.WalkSpeed + 1 then
+						st.noise += Config.Noise.RunPerSecond * 0.25
+					end
+					st.noise = math.max(0, math.min(Config.Noise.Max, st.noise - Config.Noise.Decay * 0.25))
+					char:SetAttribute("Noise", st.noise)
+				end
+			end
+		end
+	end)
+
+	Players.PlayerRemoving:Connect(PlayerSession.remove)
+end
+
+return PlayerSession
+</ProtectedString>
+        </Properties>
+      </Item>
+      <Item class="ModuleScript" referent="RBX19">
+        <Properties>
+          <string name="Name">RigFactory</string>
+          <ProtectedString name="Source">--!strict
+-- Crea rigs humanoides por código (NPCs y entidades).
+--
+-- Las extremidades cuelgan de Motor6D reales, no de soldaduras rígidas, y un
+-- animador procedural las balancea según la velocidad del Humanoid. Así los
+-- personajes caminan de verdad en lugar de deslizarse, que es lo que delata
+-- de inmediato a un juego de Roblox sin animaciones.
+
+local RunService = game:GetService("RunService")
+
+local RigFactory = {}
+
+export type RigOptions = {
+	name: string?,
+	skin: Color3?,
+	shirt: Color3?,
+	pants: Color3?,
+	scale: number?,
+	hunch: number?, -- inclinación del torso en grados (para El Viejo)
+	walkSpeed: number?,
+}
+
+function RigFactory.create(options: RigOptions?): (Model, Humanoid)
+	local opts: RigOptions = options or {}
+	local scale = opts.scale or 1
+	local skin = opts.skin or Color3.fromRGB(196, 158, 126)
+	local shirt = opts.shirt or Color3.fromRGB(90, 98, 112)
+	local pants = opts.pants or Color3.fromRGB(60, 62, 70)
+	local hunch = math.rad(opts.hunch or 0)
+
+	local legH = 2.6 * scale
+	local torsoH = 2.6 * scale
+	local torsoW = 2.1 * scale
+	local headS = 1.15 * scale
+	local armH = 2.3 * scale
+	local armOut = torsoW / 2 + 0.4 * scale
+
+	local model = Instance.new("Model")
+	model.Name = opts.name or "Persona"
+
+	local function mk(name: string, size: Vector3, cf: CFrame, color: Color3, transparency: number?): Part
+		local p = Instance.new("Part")
+		p.Name = name
+		p.Size = size
+		p.CFrame = cf
+		p.Color = color
+		p.Material = Enum.Material.SmoothPlastic
+		p.Transparency = transparency or 0
+		p.CanCollide = false
+		p.TopSurface = Enum.SurfaceType.Smooth
+		p.BottomSurface = Enum.SurfaceType.Smooth
+		p.Parent = model
+		return p
+	end
+
+	-- El origen del modelo tiene los pies en y = 0.
+	local rootY = legH + torsoH / 2
+	local root = mk("HumanoidRootPart", Vector3.new(torsoW, torsoH, 1.1 * scale), CFrame.new(0, rootY, 0), shirt, 1)
+	root.CanCollide = true
+	model.PrimaryPart = root
+
+	-- Torso y cabeza van soldados al root (la joroba es fija).
+	local torsoCF = CFrame.new(0, rootY, 0) * CFrame.Angles(hunch, 0, 0)
+	local torso = mk("Torso", Vector3.new(torsoW, torsoH, 1.05 * scale), torsoCF, shirt)
+	local head = mk("Head", Vector3.new(headS, headS, headS), torsoCF * CFrame.new(0, torsoH / 2 + headS / 2, 0), skin)
+	for _, p in { torso, head } do
+		local weld = Instance.new("WeldConstraint")
+		weld.Part0 = root
+		weld.Part1 = p
+		weld.Parent = root
+	end
+
+	-- Extremidades articuladas. C0 se mide desde el centro del root y C1 desde
+	-- el centro de la extremidad, ambos hasta la articulación.
+	local function limb(name: string, size: Vector3, jointOffset: Vector3, color: Color3): Motor6D
+		local halfLen = size.Y / 2
+		local center = jointOffset - Vector3.new(0, halfLen, 0)
+		local p = mk(name, size, CFrame.new(center), color)
+
+		local motor = Instance.new("Motor6D")
+		motor.Name = name .. "Joint"
+		motor.Part0 = root
+		motor.Part1 = p
+		motor.C0 = CFrame.new(jointOffset - Vector3.new(0, rootY, 0))
+		motor.C1 = CFrame.new(0, halfLen, 0)
+		motor.Parent = root
+		return motor
+	end
+
+	local legSize = Vector3.new(0.85 * scale, legH, 0.85 * scale)
+	local armSize = Vector3.new(0.65 * scale, armH, 0.65 * scale)
+	local shoulderY = legH + torsoH - 0.3 * scale
+
+	local legL = limb("PiernaIzq", legSize, Vector3.new(-torsoW / 4, legH, 0), pants)
+	local legR = limb("PiernaDer", legSize, Vector3.new(torsoW / 4, legH, 0), pants)
+	local armL = limb("BrazoIzq", armSize, Vector3.new(-armOut, shoulderY, 0), shirt)
+	local armR = limb("BrazoDer", armSize, Vector3.new(armOut, shoulderY, 0), shirt)
+
+	local humanoid = Instance.new("Humanoid")
+	humanoid.RequiresNeck = false
+	humanoid.HipHeight = legH
+	humanoid.WalkSpeed = opts.walkSpeed or 8
+	humanoid.MaxHealth = 100
+	humanoid.Health = 100
+	humanoid.DisplayDistanceType = Enum.HumanoidDisplayDistanceType.None
+	humanoid.HealthDisplayType = Enum.HumanoidHealthDisplayType.AlwaysOff
+	humanoid:SetStateEnabled(Enum.HumanoidStateType.Climbing, false)
+	humanoid:SetStateEnabled(Enum.HumanoidStateType.FallingDown, false)
+	humanoid:SetStateEnabled(Enum.HumanoidStateType.Ragdoll, false)
+	humanoid.Parent = model
+
+	RigFactory.animate(model, humanoid, root, { legL, legR, armL, armR }, hunch)
+
+	return model, humanoid
+end
+
+-- Animador procedural: balancea las extremidades en función de la velocidad
+-- real del rig. `Motor6D.Transform` se replica solo desde el servidor.
+function RigFactory.animate(model: Model, humanoid: Humanoid, root: BasePart, motors: { Motor6D }, hunch: number)
+	local legL, legR, armL, armR = motors[1], motors[2], motors[3], motors[4]
+	local phase = 0
+	local amount = 0
+	local alive = true
+	model.Destroying:Once(function()
+		alive = false
+	end)
+
+	local conn
+	conn = RunService.Heartbeat:Connect(function(dt)
+		if not alive or humanoid.Health &lt;= 0 then
+			conn:Disconnect()
+			return
+		end
+		-- `create` aún no ha parentado el modelo: espera sin cortar el bucle.
+		if not model.Parent then
+			return
+		end
+
+		local v = root.AssemblyLinearVelocity
+		local speed = Vector3.new(v.X, 0, v.Z).Magnitude
+
+		-- La amplitud sube y baja suavemente para que arrancar y frenar no
+		-- corten el paso de golpe.
+		local target = math.clamp(speed / 11, 0, 1)
+		amount += (target - amount) * math.min(dt * 6, 1)
+		phase += dt * math.max(speed, 0.1) * 0.95
+
+		local swing = math.sin(phase) * amount * 0.75
+		-- Los brazos van contrapeados y con menos recorrido que las piernas.
+		local armSwing = -swing * 0.65 + hunch * 0.5
+
+		legL.Transform = CFrame.Angles(swing, 0, 0)
+		legR.Transform = CFrame.Angles(-swing, 0, 0)
+		armL.Transform = CFrame.Angles(armSwing, 0, 0)
+		armR.Transform = CFrame.Angles(-armSwing + hunch, 0, 0)
+	end)
+end
+
+-- Coloca el rig con los pies sobre la posición dada.
+function RigFactory.place(model: Model, position: Vector3, lookAt: Vector3?)
+	local root = model.PrimaryPart :: BasePart
+	local humanoid = model:FindFirstChildOfClass("Humanoid") :: Humanoid
+	local hip = root.Size.Y / 2 + humanoid.HipHeight
+	local target = Vector3.new(position.X, position.Y + hip, position.Z)
+	local cf
+	if lookAt then
+		cf = CFrame.lookAt(target, Vector3.new(lookAt.X, target.Y, lookAt.Z))
+	else
+		cf = CFrame.new(target)
+	end
+	model:PivotTo(cf)
+end
+
+return RigFactory
+</ProtectedString>
+        </Properties>
+      </Item>
+    </Item>
+  </Item>
+  <Item class="StarterPlayer" referent="RBX20">
+    <Properties>
+      <string name="Name">StarterPlayer</string>
+    </Properties>
+    <Item class="StarterPlayerScripts" referent="RBX21">
+      <Properties>
+        <string name="Name">StarterPlayerScripts</string>
+      </Properties>
+      <Item class="Folder" referent="RBX22">
+        <Properties>
+          <string name="Name">Client</string>
+        </Properties>
+        <Item class="ModuleScript" referent="RBX23">
+          <Properties>
+            <string name="Name">Camera</string>
+            <ProtectedString name="Source">--!strict
+-- Cámara en primera persona con vida propia: balanceo de pasos, respiración,
+-- inclinación al girar y un ligero empuje de FOV al esprintar.
+-- Es el módulo dueño de `Humanoid.CameraOffset`; cualquier sacudida se pide
+-- con `Camera.shake()` para que no peleen dos sistemas por el mismo valor.
+
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+
+local Camera = {}
+
+local player = Players.LocalPlayer
+local camera = workspace.CurrentCamera
+
+local BASE_FOV = 70
+local SPRINT_FOV = 78
+
+local bobPhase = 0
+local breathPhase = 0
+local shakeAmount = 0
+local sprinting = false
+local lastYaw = 0
+local rollCurrent = 0
+
+function Camera.setSprinting(value: boolean)
+	sprinting = value
+end
+
+-- Pide una sacudida (0..1). Se disipa sola.
+function Camera.shake(amount: number)
+	shakeAmount = math.max(shakeAmount, amount)
+end
+
+function Camera.init()
+	camera.FieldOfView = BASE_FOV
+
+	RunService.RenderStepped:Connect(function(dt)
+		local char = player.Character
+		local hum = char and char:FindFirstChildOfClass("Humanoid")
+		local root = char and char:FindFirstChild("HumanoidRootPart") :: BasePart?
+		if not hum or not root or hum.Health &lt;= 0 then
+			return
+		end
+
+		local v = root.AssemblyLinearVelocity
+		local speed = Vector3.new(v.X, 0, v.Z).Magnitude
+
+		-- Balanceo de pasos: más rápido y más amplio cuanto más se corre.
+		local moving = speed &gt; 1
+		if moving then
+			bobPhase += dt * (speed * 0.85)
+		else
+			-- Vuelve suavemente al centro al detenerse.
+			bobPhase += dt * 2
+		end
+		local bobStrength = moving and math.clamp(speed / 16, 0.1, 1) or 0
+		local bobY = math.sin(bobPhase * 2) * 0.14 * bobStrength
+		local bobX = math.cos(bobPhase) * 0.1 * bobStrength
+
+		-- Respiración: siempre presente, más marcada al estar quieto.
+		breathPhase += dt * (sprinting and 2.6 or 1.1)
+		local breathY = math.sin(breathPhase) * (moving and 0.02 or 0.05)
+
+		-- Inclinación lateral al girar la cabeza.
+		local yaw = math.atan2(camera.CFrame.LookVector.X, camera.CFrame.LookVector.Z)
+		local dYaw = yaw - lastYaw
+		if dYaw &gt; math.pi then
+			dYaw -= math.pi * 2
+		elseif dYaw &lt; -math.pi then
+			dYaw += math.pi * 2
+		end
+		lastYaw = yaw
+		local rollTarget = math.clamp(-dYaw * 2.2, -0.06, 0.06)
+		rollCurrent += (rollTarget - rollCurrent) * math.min(dt * 8, 1)
+
+		-- Sacudida puntual (sustos, muerte cercana).
+		local shakeX, shakeY = 0, 0
+		if shakeAmount &gt; 0.001 then
+			shakeX = (math.random() - 0.5) * shakeAmount * 1.2
+			shakeY = (math.random() - 0.5) * shakeAmount * 1.2
+			shakeAmount = math.max(0, shakeAmount - dt * 1.6)
+		end
+
+		hum.CameraOffset = Vector3.new(bobX + shakeX, bobY + breathY + shakeY, 0)
+
+		-- FOV: el esprint "empuja" la vista hacia adelante.
+		local targetFov = sprinting and moving and SPRINT_FOV or BASE_FOV
+		camera.FieldOfView += (targetFov - camera.FieldOfView) * math.min(dt * 4, 1)
+
+		-- La inclinación se aplica sobre la cámara ya resuelta por Roblox.
+		if math.abs(rollCurrent) &gt; 0.0005 then
+			camera.CFrame = camera.CFrame * CFrame.Angles(0, 0, rollCurrent)
+		end
+	end)
+end
+
+return Camera
+</ProtectedString>
+          </Properties>
+        </Item>
+        <Item class="ModuleScript" referent="RBX24">
+          <Properties>
+            <string name="Name">Effects</string>
+            <ProtectedString name="Source">--!strict
+-- Efectos sensoriales del cliente: viñeta de tensión, latido cuando El Viejo
+-- caza cerca, sacudida al morir y susurro local al pisar un sello de Corre.
+
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local TweenService = game:GetService("TweenService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local Config = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Config"))
+local SoundUtil = require(ReplicatedStorage.Shared.SoundUtil)
+local Camera = require(script.Parent.Camera)
+
+local Effects = {}
+
+local player = Players.LocalPlayer
+local vignetteParts: { Frame } = {}
+local vignetteGui: ScreenGui
+local heartbeat: Sound
+local phase = "INTERMISSION"
+local warnedSeal = false
+local subtitleCallback: ((string) -&gt; ())? = nil
+
+-- ── Viñeta (cuatro bordes con degradado hacia negro) ─────────────────────────
+
+local function buildVignette()
+	vignetteGui = Instance.new("ScreenGui")
+	vignetteGui.Name = "LHM_Vignette"
+	vignetteGui.ResetOnSpawn = false
+	vignetteGui.IgnoreGuiInset = true
+	vignetteGui.DisplayOrder = -1
+	vignetteGui.Parent = player:WaitForChild("PlayerGui")
+
+	local defs = {
+		{ pos = UDim2.new(0, 0, 0, 0), size = UDim2.new(1, 0, 0.22, 0), rot = 90 },
+		{ pos = UDim2.new(0, 0, 0.78, 0), size = UDim2.new(1, 0, 0.22, 0), rot = -90 },
+		{ pos = UDim2.new(0, 0, 0, 0), size = UDim2.new(0.16, 0, 1, 0), rot = 0 },
+		{ pos = UDim2.new(0.84, 0, 0, 0), size = UDim2.new(0.16, 0, 1, 0), rot = 180 },
+	}
+	for _, def in defs do
+		local f = Instance.new("Frame")
+		f.BackgroundColor3 = Color3.new(0, 0, 0)
+		f.BorderSizePixel = 0
+		f.Position = def.pos
+		f.Size = def.size
+		f.BackgroundTransparency = 1
+		local grad = Instance.new("UIGradient")
+		grad.Rotation = def.rot
+		grad.Transparency = NumberSequence.new({
+			NumberSequenceKeypoint.new(0, 0),
+			NumberSequenceKeypoint.new(1, 1),
+		})
+		grad.Parent = f
+		f.Parent = vignetteGui
+		table.insert(vignetteParts, f)
+	end
+end
+
+local function setVignette(intensity: number)
+	-- intensity 0..1 → transparencia base de los bordes
+	local t = 1 - math.clamp(intensity, 0, 1) * 0.85
+	for _, f in vignetteParts do
+		f.BackgroundTransparency = t
+	end
+end
+
+-- ── Bucle de tensión ─────────────────────────────────────────────────────────
+
+local function tensionLoop()
+	RunService.Heartbeat:Connect(function()
+		local base = 0
+		if phase == "CIERRE" then
+			base = 0.25
+		elseif phase == "PROHIBIDA" then
+			base = 0.5
+		end
+
+		local extra = 0
+		local viejo = workspace:FindFirstChild("ElViejo")
+		local char = player.Character
+		local root = char and char:FindFirstChild("HumanoidRootPart") :: BasePart?
+		if viejo and root then
+			local vRoot = viejo:FindFirstChild("HumanoidRootPart") :: BasePart?
+			if vRoot then
+				local dist = (vRoot.Position - root.Position).Magnitude
+				local hunting = viejo:GetAttribute("Hunting") == true
+				if hunting and dist &lt; 60 then
+					extra = (1 - dist / 60) * 0.5
+					heartbeat.Volume = (1 - dist / 60) * 0.8
+					heartbeat.PlaybackSpeed = 0.9 + (1 - dist / 60) * 0.5
+					if not heartbeat.IsPlaying then
+						heartbeat:Play()
+					end
+				elseif heartbeat.IsPlaying then
+					heartbeat:Stop()
+				end
+			end
+		elseif heartbeat.IsPlaying then
+			heartbeat:Stop()
+		end
+
+		setVignette(base + extra)
+	end)
+end
+
+-- ── Aviso local de los sellos de Corre ───────────────────────────────────────
+
+local function sealLoop()
+	task.spawn(function()
+		while true do
+			task.wait(0.35)
+			local char = player.Character
+			local root = char and char:FindFirstChild("HumanoidRootPart") :: BasePart?
+			if not root then
+				continue
+			end
+			local mapModel = workspace:FindFirstChild("LaHoraDelMercado")
+			local seals = mapModel and mapModel:FindFirstChild("Seals")
+			if not seals then
+				warnedSeal = false
+				continue
+			end
+			for _, seal in seals:GetChildren() do
+				if seal:IsA("BasePart") then
+					local d = (seal.Position - root.Position).Magnitude
+					local reach = math.max(seal.Size.X, seal.Size.Z) / 2 + 4
+					if d &lt; math.max(reach, Config.Corre.WhisperRadius) then
+						if not warnedSeal and subtitleCallback then
+							warnedSeal = true
+							subtitleCallback("…no corras.")
+						end
+						break
+					end
+				end
+			end
+		end
+	end)
+end
+
+-- ── API ──────────────────────────────────────────────────────────────────────
+
+function Effects.init(onSubtitle: (string) -&gt; ())
+	subtitleCallback = onSubtitle
+	buildVignette()
+
+	heartbeat = SoundUtil.make(player:WaitForChild("PlayerGui"), Config.Sounds.Heartbeat, {
+		Volume = 0,
+		Looped = true,
+		Name = "Latido",
+	})
+
+	tensionLoop()
+	sealLoop()
+end
+
+function Effects.setPhase(newPhase: string)
+	phase = newPhase
+	if newPhase ~= "PROHIBIDA" then
+		warnedSeal = false
+	end
+end
+
+function Effects.jumpscare()
+	-- Destello rojo + sacudida de cámara.
+	local flash = Instance.new("Frame")
+	flash.BackgroundColor3 = Color3.fromRGB(120, 10, 8)
+	flash.BackgroundTransparency = 0.2
+	flash.Size = UDim2.fromScale(1, 1)
+	flash.BorderSizePixel = 0
+	flash.Parent = vignetteGui
+	TweenService:Create(flash, TweenInfo.new(1.1), { BackgroundTransparency = 1 }):Play()
+	task.delay(1.2, function()
+		flash:Destroy()
+	end)
+
+	Camera.shake(0.9)
+end
+
+return Effects
+</ProtectedString>
+          </Properties>
+        </Item>
+        <Item class="ModuleScript" referent="RBX25">
+          <Properties>
+            <string name="Name">HUD</string>
+            <ProtectedString name="Source">--!strict
+-- Interfaz mínima y diegética: reloj, fase, objetivo, avisos, subtítulos
+-- y pantalla de muerte. Sin barras ni botones que rompan la inmersión.
+
+local Players = game:GetService("Players")
+local TweenService = game:GetService("TweenService")
+
+local HUD = {}
+
+local player = Players.LocalPlayer
+local gui: ScreenGui
+local clockLabel: TextLabel
+local phaseLabel: TextLabel
+local objectiveLabel: TextLabel
+local subtitleLabel: TextLabel
+local toastFrame: Frame
+local deathOverlay: Frame
+local deathTitle: TextLabel
+local introLabel: TextLabel
+
+local PHASE_NAMES = {
+	INTERMISSION = "esperando la tarde",
+	TARDE = "tarde",
+	CIERRE = "cierre",
+	PROHIBIDA = "hora prohibida",
+	RESULTS = "amanecer",
+}
+
+local KIND_COLORS = {
+	info = Color3.fromRGB(214, 210, 198),
+	good = Color3.fromRGB(168, 220, 168),
+	danger = Color3.fromRGB(226, 120, 110),
+	death = Color3.fromRGB(200, 96, 96),
+	pa = Color3.fromRGB(226, 208, 150),
+}
+
+local function label(parent: Instance, props: { [string]: any }): TextLabel
+	local l = Instance.new("TextLabel")
+	l.BackgroundTransparency = 1
+	l.Font = Enum.Font.Gotham
+	l.TextColor3 = Color3.fromRGB(220, 216, 205)
+	l.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
+	l.TextStrokeTransparency = 0.6
+	for k, v in props do
+		(l :: any)[k] = v
+	end
+	l.Parent = parent
+	return l
+end
+
+function HUD.init()
+	gui = Instance.new("ScreenGui")
+	gui.Name = "LHM_HUD"
+	gui.ResetOnSpawn = false
+	gui.IgnoreGuiInset = true
+	gui.Parent = player:WaitForChild("PlayerGui")
+
+	clockLabel = label(gui, {
+		Name = "Reloj",
+		Size = UDim2.fromOffset(220, 46),
+		Position = UDim2.new(0.5, -110, 0, 14),
+		Font = Enum.Font.Code,
+		TextSize = 38,
+		Text = "17:45",
+	})
+	phaseLabel = label(gui, {
+		Name = "Fase",
+		Size = UDim2.fromOffset(300, 20),
+		Position = UDim2.new(0.5, -150, 0, 58),
+		TextSize = 14,
+		TextColor3 = Color3.fromRGB(170, 166, 156),
+		Text = "",
+	})
+	objectiveLabel = label(gui, {
+		Name = "Objetivo",
+		Size = UDim2.new(0, 460, 0, 60),
+		Position = UDim2.new(0, 18, 1, -84),
+		TextSize = 16,
+		TextXAlignment = Enum.TextXAlignment.Left,
+		TextYAlignment = Enum.TextYAlignment.Bottom,
+		TextWrapped = true,
+		Text = "",
+	})
+	subtitleLabel = label(gui, {
+		Name = "Subtitulo",
+		Size = UDim2.new(0.6, 0, 0, 30),
+		Position = UDim2.new(0.2, 0, 0.78, 0),
+		Font = Enum.Font.Merriweather,
+		TextSize = 20,
+		TextColor3 = Color3.fromRGB(200, 192, 176),
+		TextTransparency = 1,
+		Text = "",
+	})
+
+	toastFrame = Instance.new("Frame")
+	toastFrame.Name = "Avisos"
+	toastFrame.BackgroundTransparency = 1
+	toastFrame.Size = UDim2.new(0, 420, 0, 220)
+	toastFrame.Position = UDim2.new(1, -438, 0, 90)
+	local layout = Instance.new("UIListLayout")
+	layout.SortOrder = Enum.SortOrder.LayoutOrder
+	layout.Padding = UDim.new(0, 6)
+	layout.HorizontalAlignment = Enum.HorizontalAlignment.Right
+	layout.Parent = toastFrame
+	toastFrame.Parent = gui
+
+	deathOverlay = Instance.new("Frame")
+	deathOverlay.Name = "Muerte"
+	deathOverlay.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+	deathOverlay.BackgroundTransparency = 1
+	deathOverlay.Size = UDim2.fromScale(1, 1)
+	deathOverlay.Visible = false
+	deathOverlay.Parent = gui
+	deathTitle = label(deathOverlay, {
+		Size = UDim2.new(1, 0, 0, 70),
+		Position = UDim2.new(0, 0, 0.38, 0),
+		Font = Enum.Font.Creepster,
+		TextSize = 58,
+		TextColor3 = Color3.fromRGB(170, 40, 36),
+		Text = "",
+	})
+	label(deathOverlay, {
+		Size = UDim2.new(1, 0, 0, 30),
+		Position = UDim2.new(0, 0, 0.52, 0),
+		TextSize = 16,
+		TextColor3 = Color3.fromRGB(160, 156, 148),
+		Text = "Observa a los que quedan. Clic para cambiar de vista.",
+	})
+
+	introLabel = label(gui, {
+		Name = "Titulo",
+		Size = UDim2.new(1, 0, 0, 110),
+		Position = UDim2.new(0, 0, 0.3, 0),
+		Font = Enum.Font.Creepster,
+		TextSize = 84,
+		TextColor3 = Color3.fromRGB(196, 180, 150),
+		TextTransparency = 1,
+		Text = "LA HORA DEL MERCADO",
+	})
+end
+
+function HUD.setClock(hh: number, mm: number)
+	local isLate = (hh &gt;= 23 and mm &gt;= 59) or hh &lt; 6
+	clockLabel.Text = string.format("%02d:%02d", hh, mm)
+	clockLabel.TextColor3 = isLate and Color3.fromRGB(190, 70, 62) or Color3.fromRGB(220, 216, 205)
+end
+
+function HUD.setPhase(phase: string)
+	phaseLabel.Text = PHASE_NAMES[phase] or phase
+	if phase == "PROHIBIDA" then
+		phaseLabel.TextColor3 = Color3.fromRGB(190, 70, 62)
+	else
+		phaseLabel.TextColor3 = Color3.fromRGB(170, 166, 156)
+	end
+end
+
+function HUD.setObjective(text: string)
+	objectiveLabel.Text = text
+end
+
+function HUD.toast(msg: string, kind: string?)
+	local item = label(toastFrame, {
+		Size = UDim2.new(1, 0, 0, 24),
+		TextSize = 15,
+		TextXAlignment = Enum.TextXAlignment.Right,
+		TextWrapped = true,
+		TextColor3 = KIND_COLORS[kind or "info"] or KIND_COLORS.info,
+		Text = msg,
+		AutomaticSize = Enum.AutomaticSize.Y,
+	})
+	task.delay(7, function()
+		local t = TweenService:Create(item, TweenInfo.new(1.2), { TextTransparency = 1, TextStrokeTransparency = 1 })
+		t:Play()
+		t.Completed:Once(function()
+			item:Destroy()
+		end)
+	end)
+end
+
+function HUD.subtitle(text: string)
+	subtitleLabel.Text = text
+	subtitleLabel.TextTransparency = 1
+	TweenService:Create(subtitleLabel, TweenInfo.new(0.6), { TextTransparency = 0.1 }):Play()
+	task.delay(4, function()
+		if subtitleLabel.Text == text then
+			TweenService:Create(subtitleLabel, TweenInfo.new(1.5), { TextTransparency = 1 }):Play()
+		end
+	end)
+end
+
+local DEATH_TITLES = {
+	viejo = "TE ENCONTRÓ",
+	corre = "NO DEBISTE CORRER",
+	noche = "LA NOCHE TE RECLAMÓ",
+	desconocido = "TE PERDISTE",
+}
+
+function HUD.showDeath(cause: string)
+	deathOverlay.Visible = true
+	deathOverlay.BackgroundTransparency = 1
+	deathTitle.Text = DEATH_TITLES[cause] or DEATH_TITLES.desconocido
+	TweenService:Create(deathOverlay, TweenInfo.new(0.6), { BackgroundTransparency = 0.35 }):Play()
+end
+
+function HUD.hideDeath()
+	deathOverlay.Visible = false
+end
+
+function HUD.showIntro()
+	introLabel.TextTransparency = 1
+	TweenService:Create(introLabel, TweenInfo.new(1.6), { TextTransparency = 0.05 }):Play()
+	task.delay(4, function()
+		TweenService:Create(introLabel, TweenInfo.new(2), { TextTransparency = 1 }):Play()
+	end)
+end
+
+return HUD
+</ProtectedString>
+          </Properties>
+        </Item>
+        <Item class="LocalScript" referent="RBX26">
+          <Properties>
+            <string name="Name">Main</string>
+            <ProtectedString name="Source">--!strict
+-- Cliente de "La Hora del Mercado": controles, HUD, efectos y modo espectador.
+--
+-- Controles:
+--   Shift  — correr (ruidoso; mortal dentro de un sello de Corre)
+--   F      — linterna
+--   Clic   — al estar muerto, cambia entre los compañeros que siguen vivos
+
+local Players = game:GetService("Players")
+local UserInputService = game:GetService("UserInputService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local Remotes = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Remotes"))
+
+local HUD = require(script.Parent.HUD)
+local Camera = require(script.Parent.Camera)
+local Effects = require(script.Parent.Effects)
+
+local player = Players.LocalPlayer
+local camera = workspace.CurrentCamera
+
+local isDead = false
+local spectateIndex = 0
+
+HUD.init()
+Camera.init()
+Effects.init(HUD.subtitle)
+HUD.showIntro()
+HUD.setObjective("Esperando a que empiece la tarde…")
+
+-- ── Entrada ──────────────────────────────────────────────────────────────────
+
+local function setSprinting(value: boolean)
+	if isDead then
+		return
+	end
+	Camera.setSprinting(value)
+	Remotes.get("SprintRequest"):FireServer(value)
+end
+
+UserInputService.InputBegan:Connect(function(input, processed)
+	if processed then
+		return
+	end
+	if input.KeyCode == Enum.KeyCode.LeftShift or input.KeyCode == Enum.KeyCode.RightShift then
+		setSprinting(true)
+	elseif input.KeyCode == Enum.KeyCode.F then
+		if not isDead then
+			Remotes.get("FlashlightRequest"):FireServer()
+		end
+	elseif input.UserInputType == Enum.UserInputType.MouseButton1 and isDead then
+		-- Cambia de compañero al que observar.
+		local alive = {}
+		for _, other in Players:GetPlayers() do
+			local char = other.Character
+			local hum = char and char:FindFirstChildOfClass("Humanoid")
+			if other ~= player and hum and hum.Health &gt; 0 then
+				table.insert(alive, other)
+			end
+		end
+		if #alive &gt; 0 then
+			spectateIndex = (spectateIndex % #alive) + 1
+			local target = alive[spectateIndex]
+			local hum = target.Character and target.Character:FindFirstChildOfClass("Humanoid")
+			if hum then
+				camera.CameraSubject = hum
+			end
+		end
+	end
+end)
+
+UserInputService.InputEnded:Connect(function(input)
+	if input.KeyCode == Enum.KeyCode.LeftShift or input.KeyCode == Enum.KeyCode.RightShift then
+		setSprinting(false)
+	end
+end)
+
+-- El móvil no tiene Shift: correr se activa manteniendo el toque en marcha.
+if UserInputService.TouchEnabled and not UserInputService.KeyboardEnabled then
+	UserInputService.TouchLongPress:Connect(function(_positions, state)
+		if state == Enum.UserInputState.Begin then
+			setSprinting(true)
+		elseif state == Enum.UserInputState.End or state == Enum.UserInputState.Cancel then
+			setSprinting(false)
+		end
+	end)
+end
+
+-- ── Remotos ──────────────────────────────────────────────────────────────────
+
+Remotes.get("Clock").OnClientEvent:Connect(HUD.setClock)
+Remotes.get("Toast").OnClientEvent:Connect(HUD.toast)
+Remotes.get("Objective").OnClientEvent:Connect(HUD.setObjective)
+Remotes.get("Subtitle").OnClientEvent:Connect(HUD.subtitle)
+
+Remotes.get("Phase").OnClientEvent:Connect(function(phase: string)
+	HUD.setPhase(phase)
+	Effects.setPhase(phase)
+	if phase == "PROHIBIDA" then
+		Camera.shake(0.5)
+	end
+end)
+
+Remotes.get("Death").OnClientEvent:Connect(function(cause: string)
+	isDead = true
+	spectateIndex = 0
+	Camera.setSprinting(false)
+	Effects.jumpscare()
+	HUD.showDeath(cause)
+	HUD.setObjective("")
+end)
+
+Remotes.get("RoundState").OnClientEvent:Connect(function(state: string)
+	if state == "SPECTATE" then
+		-- Entró a mitad de ronda: sin personaje, pero puede seguir a los demás.
+		isDead = true
+		spectateIndex = 0
+		HUD.hideDeath()
+		HUD.setObjective("Estás observando. Entrarás en la siguiente ronda. Clic para cambiar de vista.")
+		return
+	end
+	if state == "INTERMISSION" or state == "ROUND" then
+		isDead = false
+		HUD.hideDeath()
+		local char = player.Character
+		local hum = char and char:FindFirstChildOfClass("Humanoid")
+		if hum then
+			camera.CameraSubject = hum
+		end
+	end
+	if state == "ROUND" then
+		HUD.showIntro()
+	end
+end)
+
+-- Al reaparecer, la cámara vuelve al propio personaje.
+player.CharacterAdded:Connect(function(char)
+	local hum = char:WaitForChild("Humanoid", 10)
+	if hum then
+		camera.CameraSubject = hum
+		isDead = false
+		HUD.hideDeath()
+	end
+end)
+</ProtectedString>
+            <bool name="Disabled">false</bool>
+          </Properties>
+        </Item>
+      </Item>
+    </Item>
+  </Item>
+</roblox>

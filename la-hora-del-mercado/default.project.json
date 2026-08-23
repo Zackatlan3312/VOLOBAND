@@ -1,0 +1,57 @@
+{
+  "name": "LaHoraDelMercado",
+  "tree": {
+    "$className": "DataModel",
+    "Lighting": {
+      "$properties": {
+        "Technology": "Future",
+        "Ambient": [0.09, 0.09, 0.11],
+        "OutdoorAmbient": [0.03, 0.03, 0.05],
+        "Brightness": 1.2,
+        "ClockTime": 0,
+        "GlobalShadows": true,
+        "EnvironmentDiffuseScale": 0.2,
+        "EnvironmentSpecularScale": 0.35,
+        "ExposureCompensation": 0,
+        "FogColor": [0.02, 0.02, 0.03],
+        "FogEnd": 420,
+        "FogStart": 60,
+        "ShadowSoftness": 0.25
+      }
+    },
+    "SoundService": {
+      "$properties": {
+        "AmbientReverb": "Hangar",
+        "DistanceFactor": 3.33
+      }
+    },
+    "Players": {
+      "$properties": {
+        "CharacterAutoLoads": false,
+        "RespawnTime": 9999
+      }
+    },
+    "ReplicatedStorage": {
+      "Shared": {
+        "$path": "src/shared"
+      }
+    },
+    "ServerScriptService": {
+      "Server": {
+        "$path": "src/server"
+      }
+    },
+    "StarterPlayer": {
+      "$properties": {
+        "CharacterWalkSpeed": 10,
+        "CharacterJumpHeight": 0,
+        "EnableMouseLockOption": false
+      },
+      "StarterPlayerScripts": {
+        "Client": {
+          "$path": "src/client"
+        }
+      }
+    }
+  }
+}
