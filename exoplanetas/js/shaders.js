@@ -182,8 +182,9 @@ void main(){
   o=vec4(c,0.0);
 }`;
 
-  /* ---------- Planeta: esfera analitica con superficie procedural ---------- */
-  const FS_PLANET = HEAD + NOISE + `
+  /* ---------- Planeta: esfera analitica. Continentes procedurales cubiertos con
+     terreno real (NASA Blue Marble) y nubes reales de la Tierra (NASA) ---------- */
+  const FS_PLANET = HEAD + 'precision highp sampler2DArray;\n' + NOISE + `
 uniform vec3 uView;
 uniform float uR;
 uniform mat3 uRot;
@@ -212,6 +213,19 @@ uniform vec3 uLow;
 uniform vec3 uHigh;
 uniform vec3 uSnow;
 uniform vec3 uAtmo;
+uniform sampler2D uCloudTex;
+uniform sampler2DArray uLandTex;
+uniform sampler2D uEarthTex;
+uniform sampler2D uOceanTex;
+uniform float uTexOn;
+uniform float uEarth;
+uniform float uCloudLon;
+uniform float uClimate;
+uniform float uWet;
+uniform float uSat;
+uniform vec3 uVeg;
+uniform float uLandScale;
+uniform vec3 uTint;
 out vec4 o;
 
 float fbm(vec3 p,float oct){
@@ -227,6 +241,53 @@ float fbm(vec3 p,float oct){
   return s/max(n,1e-4);
 }
 vec3 rotY(vec3 v,float a){float c=cos(a),s=sin(a);return vec3(c*v.x+s*v.z,v.y,-s*v.x+c*v.z);}
+vec2 lonlat(vec3 d){return vec2(atan(d.x,d.z)*0.15915494+0.5,0.5-asin(clamp(d.y,-1.0,1.0))*0.31830989);}
+
+/* muestreo triplanar de una capa del atlas de terreno real */
+vec3 tri(float layer,vec3 tp,vec3 tw,vec3 gx,vec3 gy){
+  vec3 c=vec3(0.0);float s=0.0;
+  if(tw.x>0.03){c+=tw.x*textureGrad(uLandTex,vec3(tp.zy,layer),gx.zy,gy.zy).rgb;s+=tw.x;}
+  if(tw.y>0.03){c+=tw.y*textureGrad(uLandTex,vec3(tp.xz,layer),gx.xz,gy.xz).rgb;s+=tw.y;}
+  if(tw.z>0.03){c+=tw.z*textureGrad(uLandTex,vec3(tp.xy,layer),gx.xy,gy.xy).rgb;s+=tw.z;}
+  return c/max(s,1e-4);
+}
+float gw(float T,float M,float t0,float m0,float st,float sm){return exp(-(((T-t0)*(T-t0))/(st*st)+((M-m0)*(M-m0))/(sm*sm)));}
+
+/* terreno real: los dos biomas mas probables segun temperatura y humedad, y montanas */
+vec3 realLand(vec3 q,float e,float lat,float moist,vec3 dqx,vec3 dqy){
+  vec3 tp=q*uLandScale+vec3(uSeed*0.37,uSeed*0.11,-uSeed*0.23);
+  vec3 tw=pow(abs(q),vec3(8.0));tw/=(tw.x+tw.y+tw.z);
+  vec3 gx=dqx*uLandScale,gy=dqy*uLandScale;
+  float T=uClimate+0.45-lat*1.35-e*0.5;
+  float M=(moist*2.0-1.0)*0.85+uWet;
+  float w[6];
+  w[0]=gw(T,M,0.85,-0.95,0.5,0.55);
+  w[1]=gw(T,M,0.25,-0.55,0.45,0.45);
+  w[2]=gw(T,M,0.75,0.0,0.4,0.4);
+  w[3]=gw(T,M,0.9,0.85,0.45,0.45);
+  w[4]=gw(T,M,0.05,0.45,0.4,0.5);
+  w[5]=gw(T,M,-0.55,0.3,0.45,0.6);
+  /* los dos biomas mas fuertes, restando el tercero para que las transiciones sean continuas */
+  int i1=0;
+  for(int i=1;i<6;i++){if(w[i]>w[i1])i1=i;}
+  int i2=i1==0?1:0;
+  for(int i=0;i<6;i++){if(i!=i1&&w[i]>w[i2])i2=i;}
+  float w3=0.0;
+  for(int i=0;i<6;i++){if(i!=i1&&i!=i2)w3=max(w3,w[i]);}
+  float a1=w[i1]-w3+1e-5,a2=max(w[i2]-w3,0.0);
+  vec3 c=tri(float(i1),tp,tw,gx,gy)*a1;float s=a1;
+  if(a2>a1*0.02){c+=tri(float(i2),tp,tw,gx,gy)*a2;s+=a2;}
+  c/=s;
+  float mtn=smoothstep(0.34,0.66,e);
+  if(mtn>0.01){
+    float lay=moist>0.5?7.0:6.0;
+    c=mix(c,tri(lay,tp*1.4+3.0,tw,gx*1.4,gy*1.4),mtn);
+  }
+  float vk=step(0.02,abs(uVeg.r-1.0)+abs(uVeg.g-1.0)+abs(uVeg.b-1.0));
+  float g=clamp((c.g-max(c.r,c.b))*14.0,0.0,1.0)*vk;
+  c=mix(c,vec3(dot(c,vec3(0.3,0.55,0.15)))*uVeg*1.5,g);
+  return mix(vec3(dot(c,vec3(0.2126,0.7152,0.0722))),c,uSat);
+}
 
 void main(){
   vec2 p=(gl_FragCoord.xy-uView.xy)/uView.z;
@@ -253,87 +314,119 @@ void main(){
     float rr=min(r,uR);
     vec3 n=normalize(vec3(p,sqrt(max(uR*uR-rr*rr,0.0))));
     vec3 q=uRot*n;
-    /* nivel de detalle por pixel: solo las octavas que el pixel puede resolver */
-    float fp=max(length(dFdx(q)),length(dFdy(q)));
+    /* derivadas en flujo uniforme: nivel de detalle por pixel y gradientes de textura */
+    vec3 dqx=dFdx(q),dqy=dFdy(q);
+    float fp=max(length(dqx),length(dqy));
     float octP=clamp(log2(1.0/(fp*uFreq*2.2+1e-6))+1.0,2.0,uOct);
+    vec3 cq=rotY(q,uCloudSpin+uCloudLon);
+    vec2 cuv=lonlat(cq);
+    vec2 cdx=dFdx(cuv),cdy=dFdy(cuv);
+    cdx.x-=floor(cdx.x+0.5);cdy.x-=floor(cdy.x+0.5);
+    vec2 euv=lonlat(q);
+    vec2 edx=dFdx(euv),edy=dFdy(euv);
+    edx.x-=floor(edx.x+0.5);edy.x-=floor(edy.x+0.5);
+    bool realEarth=uEarth*uTexOn>0.5;
     float ndlS=dot(n,L);
     vec3 c=vec3(0.0);
     if(ndlS>-0.38){
     vec3 sp=q*uFreq+uSeed;
-    vec3 w=vec3(snoise(sp*0.55+3.1),snoise(sp*0.55+17.7),snoise(sp*0.55+41.3));
-    float h=fbm(sp+w*0.62,octP);
     float lat=abs(q.y);
-    float det=octP>5.0?snoise(sp*7.0+11.0):0.0;
-
-    /* superficie */
-    float land=h-uSea;
-    float fw=fwidth(land)*0.8+1e-5;
-    float isLand=smoothstep(-fw,fw,land);
-    float e=clamp(land/0.42,0.0,1.0);
-    float moist=snoise(sp*0.7+vec3(70.0))*0.5+0.5;
-    vec3 lowC=mix(uLow*vec3(1.35,1.12,0.78)+vec3(0.02,0.015,0.0),uLow,smoothstep(0.3,0.7,moist-lat*0.25));
-    vec3 landC=mix(lowC,uHigh,smoothstep(0.1,0.62,e));
-    landC=mix(landC,uHigh*0.62+vec3(0.05),smoothstep(0.55,0.88,e));
-    landC*=0.86+0.24*(det*0.5+0.5);
-    float snowLine=0.9-lat*0.62;
-    landC=mix(landC,uSnow,smoothstep(snowLine-0.05,snowLine+0.05,e));
-    vec3 seaC=mix(uDeep,uShallow,smoothstep(-0.16,0.0,land));
-    seaC*=0.92+0.08*det;
-    vec3 surf=mix(seaC,landC,isLand);
-    float ocean=1.0-isLand;
-
-    /* hielo polar y planetas "ojo" (rotacion sincronizada) */
-    float iceN=w.z*0.05+det*0.014;
-    float ice=smoothstep(1.0-uIce-0.025,1.0-uIce+0.025,lat+iceN);
     float dsub=dot(q,normalize(uSub));
-    if(uEye>-1.5){
-      float eyeIce=1.0-smoothstep(uEye-0.06,uEye+0.06,dsub+iceN*1.4);
-      ice=max(ice,eyeIce);
-    }
-    vec3 iceC=mix(uSnow,uSnow*vec3(0.74,0.86,0.98),clamp(det*0.35+0.3+smoothstep(0.0,-0.2,land)*0.35,0.0,1.0));
-    surf=mix(surf,iceC,ice);
-    ocean*=1.0-ice;
+    vec3 surf;float ocean;float ice=0.0;float relief=0.0;float h=0.0;float det=0.0;
+    vec3 w=vec3(0.0);
+    if(realEarth){
+      /* la Tierra real: imagen satelital y mascara de oceano de la NASA */
+      surf=textureGrad(uEarthTex,euv,edx,edy).rgb;
+      ocean=textureGrad(uOceanTex,euv,edx,edy).r;
+    } else {
+      w=vec3(snoise(sp*0.55+3.1),snoise(sp*0.55+17.7),snoise(sp*0.55+41.3));
+      h=fbm(sp+w*0.62,octP);
+      det=octP>5.0?snoise(sp*7.0+11.0):0.0;
 
-    /* bandas: mundos hiceanicos y gigantes */
-    if(uBands>0.0){
-      float bl=q.y*6.5+w.x*0.9+snoise(vec3(q.xz*2.2,q.y*13.0)+uSeed)*0.4;
-      float b1=sin(bl*1.8)*0.5+0.5;
-      float b2=snoise(vec3(q.x*3.0,q.y*22.0+w.y*2.0,q.z*3.0)+uSeed*3.0)*0.5+0.5;
-      vec3 bc=mix(uDeep,uShallow,b1);
-      bc=mix(bc,uLow,smoothstep(0.5,0.9,b2)*0.55);
-      bc=mix(bc,uHigh,smoothstep(0.35,0.7,h)*0.35);
-      surf=mix(surf,bc,uBands);
-      ocean*=1.0-uBands;
-    }
+      float land=h-uSea;
+      float fw=fwidth(land)*0.8+1e-5;
+      float isLand=smoothstep(-fw,fw,land);
+      float e=clamp((h-max(uSea,-0.22))/0.42,0.0,1.0);
+      float moist=snoise(sp*0.7+vec3(70.0))*0.5+0.5;
+      vec3 lowC=mix(uLow*vec3(1.35,1.12,0.78)+vec3(0.02,0.015,0.0),uLow,smoothstep(0.3,0.7,moist-lat*0.25));
+      vec3 landC=mix(lowC,uHigh,smoothstep(0.1,0.62,e));
+      landC=mix(landC,uHigh*0.62+vec3(0.05),smoothstep(0.55,0.88,e));
+      landC*=0.86+0.24*(det*0.5+0.5);
+      if(uTexOn>0.001&&uSea<0.95&&land>-0.04){
+        vec3 rl=realLand(q,e,lat,moist,dqx,dqy)*uTint;
+        if(octP>6.5) rl*=0.94+0.12*(snoise(sp*26.0+5.0)*0.5+0.5);
+        landC=mix(landC,rl,uTexOn);
+      }
+      float snowLine=0.9-lat*0.62;
+      landC=mix(landC,uSnow,smoothstep(snowLine-0.05,snowLine+0.05,e));
+      vec3 seaC=mix(uDeep,uShallow,smoothstep(-0.08,0.0,land)*0.85);
+      seaC*=0.92+0.08*det;
+      surf=mix(seaC,landC,isLand);
+      ocean=1.0-isLand;
 
-    /* relieve: segunda muestra del terreno desplazada hacia la luz (sin artefactos por bloques) */
-    float relief=0.0;
-    if(uRelief>0.0 && land>-0.03 && ice<0.95 && uBands<0.5){
-      vec3 Lp=uRot*L;
-      vec3 Lt=Lp-q*dot(Lp,q);
-      float lt=length(Lt);
-      if(lt>1e-4){
-        float eps=max(fp*1.6,0.0016);
-        vec3 q2=normalize(q+Lt/lt*eps);
-        float h2=fbm(q2*uFreq+uSeed+w*0.62,octP);
-        relief=clamp((h-h2)/eps*uRelief*0.024,-0.7,0.7)*smoothstep(-0.03,0.02,land)*(1.0-ice*0.7);
+      /* hielo polar y planetas "ojo" (rotacion sincronizada) */
+      float iceN=w.z*0.05+det*0.014;
+      ice=smoothstep(1.0-uIce-0.025,1.0-uIce+0.025,lat+iceN);
+      if(uEye>-1.5){
+        float eyeIce=1.0-smoothstep(uEye-0.06,uEye+0.06,dsub+iceN*1.4);
+        ice=max(ice,eyeIce);
+      }
+      vec3 iceC=mix(uSnow,uSnow*vec3(0.74,0.86,0.98),clamp(det*0.35+0.3+smoothstep(0.0,-0.2,land)*0.35,0.0,1.0));
+      surf=mix(surf,iceC,ice);
+      ocean*=1.0-ice;
+
+      /* bandas: mundos hiceanicos y gigantes */
+      if(uBands>0.0){
+        float bl=q.y*6.5+w.x*0.9+snoise(vec3(q.xz*2.2,q.y*13.0)+uSeed)*0.4;
+        float b1=sin(bl*1.8)*0.5+0.5;
+        float b2=snoise(vec3(q.x*3.0,q.y*22.0+w.y*2.0,q.z*3.0)+uSeed*3.0)*0.5+0.5;
+        vec3 bc=mix(uDeep,uShallow,b1);
+        bc=mix(bc,uLow,smoothstep(0.5,0.9,b2)*0.55);
+        bc=mix(bc,uHigh,smoothstep(0.35,0.7,h)*0.35);
+        surf=mix(surf,bc,uBands);
+        ocean*=1.0-uBands;
+      }
+
+      /* relieve: segunda muestra del terreno desplazada hacia la luz */
+      if(uRelief>0.0&&land>-0.03&&ice<0.95&&uBands<0.5){
+        vec3 Lp=uRot*L;
+        vec3 Lt=Lp-q*dot(Lp,q);
+        float lt=length(Lt);
+        if(lt>1e-4){
+          float eps=max(fp*1.6,0.0016);
+          vec3 q2=normalize(q+Lt/lt*eps);
+          float h2=fbm(q2*uFreq+uSeed+w*0.62,octP);
+          relief=clamp((h-h2)/eps*uRelief*0.024,-0.7,0.7)*smoothstep(-0.03,0.02,land)*(1.0-ice*0.7);
+        }
       }
     }
 
-    /* nubes */
+    /* nubes: mapa real de nubes de la Tierra (NASA), con detalle extra al ampliar */
     float cloud=0.0;
     if(uCloud>0.001){
-      vec3 cq=rotY(q,uCloudSpin);
-      vec3 cp=cq*uFreq*1.2+uSeed*1.37+50.0;
-      vec3 cw=vec3(snoise(cp*0.6),snoise(cp*0.6+9.0),0.0);
-      float cn=fbm(vec3(cp.x,cp.y*1.45,cp.z)+cw*0.42+vec3(0.0,0.0,uTime*0.004),clamp(octP-1.0,2.0,uOct-1.0));
-      /* franjas de nubes: ecuador y latitudes medias, cielos mas limpios en los subtropicos */
-      float cl=abs(cq.y);
-      float band=0.82+0.22*cos(cl*9.4)+0.12*smoothstep(0.55,0.8,cl);
-      float thr=mix(0.42,-0.3,uCloud)/band;
-      cloud=smoothstep(thr-0.02,thr+0.36,cn*band);
-      cloud*=cloud*(3.0-2.0*cloud);
-      if(uEye>-1.5){ cloud*=0.25+0.95*smoothstep(uEye-0.35,uEye+0.45,dsub); }
+      float cProc=0.0;
+      if(uTexOn<0.999){
+        vec3 cp=cq*uFreq*1.2+uSeed*1.37+50.0;
+        vec3 cw=vec3(snoise(cp*0.6),snoise(cp*0.6+9.0),0.0);
+        float cn=fbm(vec3(cp.x,cp.y*1.45,cp.z)+cw*0.42+vec3(0.0,0.0,uTime*0.004),clamp(octP-1.0,2.0,uOct-1.0));
+        float cl=abs(cq.y);
+        float band=0.82+0.22*cos(cl*9.4)+0.12*smoothstep(0.55,0.8,cl);
+        float thr=mix(0.42,-0.3,uCloud)/band;
+        cProc=smoothstep(thr-0.02,thr+0.36,cn*band);
+        cProc*=cProc*(3.0-2.0*cProc);
+      }
+      float cTex=0.0;
+      if(uTexOn>0.001){
+        float t=textureGrad(uCloudTex,cuv,cdx,cdy).r;
+        if(octP>6.0){
+          float dn=fbm(cq*uFreq*10.0+vec3(uSeed*2.0),min(octP-5.0,3.0));
+          t+=dn*0.2*smoothstep(0.02,0.3,t)*(1.0-smoothstep(0.7,1.0,t));
+        }
+        if(realEarth) cTex=smoothstep(0.05,0.85,t);
+        else {float lo=mix(0.62,0.0,clamp(uCloud,0.0,1.0));cTex=smoothstep(lo,lo+0.5,t);}
+      }
+      cloud=mix(cProc,cTex,uTexOn);
+      if(uEye>-1.5){cloud*=0.25+0.95*smoothstep(uEye-0.35,uEye+0.45,dsub);}
     }
 
     /* iluminacion */
@@ -377,6 +470,52 @@ void main(){
   outC+=(hash12(gl_FragCoord.xy)-0.5)/255.0*step(0.002,outA);
   float vf=uVFade.y>uVFade.x?smoothstep(uVFade.x,uVFade.y,gl_FragCoord.y):1.0;
   o=vec4(outC*uFade*vf,outA*uFade*vf);
+}`;
+
+  /* ---------- La Tierra real girando: 12 fotos EPIC (NASA/DSCOVR) proyectadas
+     sobre una esfera e interpoladas entre si ---------- */
+  const FS_EPIC = HEAD + 'precision highp sampler2DArray;\n' + `
+uniform vec3 uView;
+uniform float uR;
+uniform sampler2DArray uEpic;
+uniform vec2 uCur;
+uniform vec4 uA;
+uniform vec4 uB;
+uniform vec4 uGeo;
+uniform float uF;
+uniform float uFade;
+out vec4 o;
+vec3 rX(vec3 v,float a){float c=cos(a),s=sin(a);return vec3(v.x,c*v.y-s*v.z,s*v.y+c*v.z);}
+vec3 rY(vec3 v,float a){float c=cos(a),s=sin(a);return vec3(c*v.x+s*v.z,v.y,-s*v.x+c*v.z);}
+float hash12(vec2 p){vec3 p3=fract(vec3(p.xyx)*0.1031);p3+=dot(p3,p3.yzx+33.33);return fract((p3.x+p3.y)*p3.z);}
+void main(){
+  vec2 p=(gl_FragCoord.xy-uView.xy)/uView.z;
+  float r=length(p);
+  float px=1.0/uView.z;
+  float hx=max(r-uR,0.0)/(uR*0.045);
+  float halo=exp(-hx*2.0)*(1.0-smoothstep(uR*1.12,uR*1.25,r));
+  vec3 col=vec3(0.0);
+  float cover=0.0;
+  if(r<uR+px*1.5){
+    float rr=min(r,uR);
+    vec3 n=normalize(vec3(p,sqrt(max(uR*uR-rr*rr,0.0))));
+    vec3 w=rY(rX(n,-uCur.x),uCur.y);
+    vec3 va=rX(rY(w,-uA.y),uA.x);
+    vec3 vb=rX(rY(w,-uB.y),uB.x);
+    vec2 ua=vec2(uGeo.x+va.x*uA.w,uGeo.y-va.y*uA.w);
+    vec2 ub=vec2(uGeo.z+vb.x*uB.w,uGeo.w-vb.y*uB.w);
+    vec3 ca=texture(uEpic,vec3(ua,uA.z)).rgb;
+    vec3 cb=texture(uEpic,vec3(ub,uB.z)).rgb;
+    float wa=(1.0-uF)*smoothstep(0.0,0.3,va.z)+1e-4;
+    float wb=uF*smoothstep(0.0,0.3,vb.z)+1e-4;
+    col=(ca*wa+cb*wb)/(wa+wb);
+    cover=1.0-smoothstep(uR-px*0.9,uR+px*0.6,r);
+  }
+  vec3 haloC=vec3(0.32,0.52,1.0)*halo*0.28;
+  vec3 outC=col*cover+haloC*(1.0-cover);
+  outC+=(hash12(gl_FragCoord.xy)-0.5)/255.0*cover;
+  float a=cover+halo*0.08*(1.0-cover);
+  o=vec4(outC*uFade,a*uFade);
 }`;
 
   /* ---------- Estrella con granulacion (sistema TRAPPIST-1) ---------- */
@@ -441,5 +580,5 @@ void main(){
   o=vec4(col,0.0);
 }`;
 
-  EXO.shaders = { VS_FULL, FS_NEBULA, FS_COMPOSITE, VS_STARS, FS_STARS, FS_PLANET, FS_STAR, FS_ORBITS };
+  EXO.shaders = { VS_FULL, FS_NEBULA, FS_COMPOSITE, VS_STARS, FS_STARS, FS_PLANET, FS_STAR, FS_ORBITS, FS_EPIC };
 })();

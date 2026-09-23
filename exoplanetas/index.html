@@ -21,7 +21,8 @@
 
   <div id="loader" role="status" aria-live="polite">
     <div class="loader-orbit"><i></i><b></b></div>
-    <p class="loader-text">Calibrando el telescopio<span>…</span></p>
+    <p class="loader-text" id="loader-text">Calibrando el telescopio<span>…</span></p>
+    <div class="loader-bar" aria-hidden="true"><i id="loader-bar"></i></div>
   </div>
 
   <!-- ============ NAVEGACION ============ -->
@@ -37,6 +38,7 @@
       <a href="#trappist">TRAPPIST-1</a>
       <a href="#distancias">Distancias</a>
       <a href="#vida">Vida</a>
+      <a href="#reales">Fotos reales</a>
       <a href="#futuro">Futuro</a>
     </nav>
     <button class="nav-toggle" id="nav-toggle" aria-label="Abrir menú" aria-expanded="false" aria-controls="nav-links"><span></span><span></span></button>
@@ -65,7 +67,7 @@
         <div><dt>El más cercano</dt><dd><span data-count="4.24" data-dec="2">4.24</span><small>años luz</small></dd></div>
       </dl>
       <a class="scroll-cue" href="#zona" aria-label="Bajar a la siguiente sección"><span></span></a>
-      <p class="hero-credit">Recreación artística de Kepler-442 b amaneciendo bajo su enana naranja</p>
+      <p class="hero-credit">Recreación de Kepler-442 b con terreno y nubes de imágenes satelitales reales de la NASA</p>
     </section>
 
     <!-- ============ 01 ZONA HABITABLE ============ -->
@@ -272,10 +274,64 @@
       </div>
     </section>
 
-    <!-- ============ 08 HISTORIA ============ -->
+    <!-- ============ 08 LO QUE SI ES REAL ============ -->
+    <section id="reales" class="section">
+      <div class="section-head" data-reveal>
+        <span class="kicker">08 · Lo que sí es real</span>
+        <h2>Lo que sí hemos fotografiado</h2>
+        <p class="lede">Ningún telescopio ha fotografiado todavía un planeta habitable fuera del Sistema Solar. Esto es lo más cerca que estamos: nuestro propio mundo visto desde lejos y los primeros exoplanetas captados en foto directa, todos gigantes y jóvenes.</p>
+      </div>
+      <div class="real-earth" data-reveal>
+        <div class="epic-stage">
+          <div class="epic-globe" id="epic-globe" role="img" aria-label="La Tierra real girando, reconstruida con 12 fotografías de la cámara EPIC de la NASA"></div>
+          <p class="epic-loading" id="epic-loading">Cargando fotografías de la NASA…</p>
+        </div>
+        <div class="epic-text">
+          <span class="badge life">Fotografía real · NASA EPIC</span>
+          <h3>La Tierra, girando de verdad</h3>
+          <p>Son 12 fotografías reales tomadas el 20 de septiembre de 2026 por la cámara EPIC de la NASA, a bordo del satélite DSCOVR, a 1.5 millones de kilómetros. Entre una foto y la siguiente, el motor proyecta cada imagen sobre una esfera y las funde. El giro que ves es el real, con las nubes de ese día.</p>
+          <dl class="epic-read">
+            <div><dt>Hora de la foto (UTC)</dt><dd id="epic-time">11:48</dd></div>
+            <div><dt>Longitud al centro</dt><dd id="epic-lon">1° E</dd></div>
+          </dl>
+          <p class="epic-fact">Vista desde Proxima b, la Tierra mediría 65 millonésimas de segundo de arco: como una moneda de 2 cm vista a 63,000 km. Por eso, incluso los telescopios del futuro verán otras Tierras como un solo punto de luz.</p>
+          <small class="credit">Imágenes: NASA EPIC Team / NOAA DSCOVR. Arrastra el planeta para adelantar o regresar el día.</small>
+        </div>
+      </div>
+      <h3 class="subhead" data-reveal>Exoplanetas fotografiados por el James Webb</h3>
+      <div class="webb">
+        <figure class="webb-card" data-reveal>
+          <div class="webb-img"><img src="img/webb-hip65426b.jpg" width="1528" height="1130" loading="lazy" decoding="async" alt="Foto del telescopio James Webb del exoplaneta HIP 65426 b en cuatro filtros infrarrojos, con la estrella tapada por el coronógrafo"></div>
+          <figcaption>
+            <h4>HIP 65426 b</h4>
+            <p>La primera foto de un exoplaneta tomada por el Webb (2022). Es un gigante gaseoso de 6 a 8 veces la masa de Júpiter y de apenas 15 a 20 millones de años. La estrella está tapada; los recuadros muestran el planeta en cuatro colores infrarrojos.</p>
+            <small>NASA/ESA/CSA, A Carter (UCSC), the ERS 1386 team, and A. Pagan (STScI)</small>
+          </figcaption>
+        </figure>
+        <figure class="webb-card" data-reveal style="--d:.08s">
+          <div class="webb-img"><img src="img/webb-twa7b.jpg" width="1856" height="1856" loading="lazy" decoding="async" alt="Foto del telescopio James Webb del candidato a planeta TWA 7 b, un punto naranja junto a los anillos de polvo azules de su estrella"></div>
+          <figcaption>
+            <h4>TWA 7 b</h4>
+            <p>El punto naranja es un posible planeta con la masa de Saturno, unas 100 masas terrestres: el más ligero jamás fotografiado directamente. Está en un hueco del disco de polvo, unas 50 veces más lejos de su estrella que la Tierra del Sol. Si se confirma, será el primer planeta descubierto por el Webb con foto directa (2025).</p>
+            <small>ESA/Webb, NASA, CSA, A.M. Lagrange, M. Zamani (ESA/Webb)</small>
+          </figcaption>
+        </figure>
+        <figure class="webb-card" data-reveal style="--d:.16s">
+          <div class="webb-img"><img src="img/webb-hr8799.jpg" width="718" height="718" loading="lazy" decoding="async" alt="Foto del telescopio James Webb de cuatro planetas gigantes, b, c, d y e, alrededor de la estrella HR 8799"></div>
+          <figcaption>
+            <h4>HR 8799</h4>
+            <p>Cuatro planetas gigantes, b, c, d y e, alrededor de una estrella joven a 130 años luz. En 2025 el Webb detectó dióxido de carbono en sus atmósferas, una pista de que se formaron como Júpiter y Saturno.</p>
+            <small>NASA, ESA, CSA, STScI, W. Balmer (JHU), L. Pueyo (STScI), M. Perrin (STScI)</small>
+          </figcaption>
+        </figure>
+      </div>
+      <p class="footnote" data-reveal>Cada punto de estas fotos es la luz real de un planeta, separada de la de su estrella. Imágenes de ESA/Webb bajo licencia CC BY 4.0.</p>
+    </section>
+
+    <!-- ============ 09 HISTORIA ============ -->
     <section id="historia" class="section">
       <div class="section-head" data-reveal>
-        <span class="kicker">08 · Tres décadas de hallazgos</span>
+        <span class="kicker">09 · Tres décadas de hallazgos</span>
         <h2>De 2 a 6,366 mundos</h2>
         <p class="lede">Exoplanetas confirmados según su año de descubrimiento. Los picos de 2014 y 2016 son validaciones masivas de candidatos del telescopio Kepler.</p>
       </div>
@@ -300,10 +356,10 @@
       </ol>
     </section>
 
-    <!-- ============ 09 FUTURO ============ -->
+    <!-- ============ 10 FUTURO ============ -->
     <section id="futuro" class="section">
       <div class="section-head" data-reveal>
-        <span class="kicker">09 · Lo que viene</span>
+        <span class="kicker">10 · Lo que viene</span>
         <h2>La próxima generación de cazadores</h2>
         <p class="lede">La meta es fotografiar una Tierra alrededor de una estrella como el Sol y analizar su aire en busca de oxígeno, ozono o metano.</p>
       </div>
@@ -325,7 +381,7 @@
     <div class="footer-grid">
       <div>
         <p class="brand foot"><svg viewBox="0 0 40 40" aria-hidden="true"><circle cx="20" cy="20" r="9" /><ellipse cx="20" cy="20" rx="18" ry="6" transform="rotate(-22 20 20)" /></svg><span>Otras Tierras</span></p>
-        <p class="muted">Todas las imágenes de planetas son recreaciones artísticas generadas por código en tiempo real. Ningún telescopio ha visto todavía la superficie de estos mundos.</p>
+        <p class="muted">Los exoplanetas habitables son recreaciones artísticas renderizadas en tiempo real: continentes generados por código, cubiertos con terreno y nubes de imágenes satelitales reales de la Tierra. Ningún telescopio ha visto todavía la superficie de estos mundos. La Tierra girando y las fotos del Webb son imágenes reales.</p>
       </div>
       <div>
         <h4>Fuentes</h4>
@@ -336,11 +392,14 @@
           <li><a href="https://www.esa.int/Science_Exploration/Space_Science/Plato" target="_blank" rel="noopener">ESA · PLATO</a></li>
           <li><a href="https://elt.eso.org/" target="_blank" rel="noopener">ESO · Extremely Large Telescope</a></li>
           <li>Kopparapu et al. (2014), límites de la zona habitable</li>
+          <li><a href="https://science.nasa.gov/earth/earth-observatory/collections/blue-marble/" target="_blank" rel="noopener">NASA Visible Earth · Blue Marble</a>: terreno y nubes</li>
+          <li><a href="https://epic.gsfc.nasa.gov/" target="_blank" rel="noopener">NASA EPIC · DSCOVR</a>: la Tierra real</li>
+          <li><a href="https://esawebb.org/images/archive/category/exoplanets/" target="_blank" rel="noopener">ESA/Webb</a>: fotos de exoplanetas (CC BY 4.0)</li>
         </ul>
       </div>
       <div>
         <h4>Técnica</h4>
-        <p class="muted">WebGL2 escrito a mano: esferas analíticas, ruido procedural y antialiasing por derivadas. Sin imágenes rasterizadas, así se ve nítido en 4K, 8K y pantallas Retina. La resolución se adapta sola para mantener la fluidez.</p>
+        <p class="muted">WebGL2 escrito a mano: esferas analíticas, imágenes satelitales con filtrado anisotrópico y detalle procedural que se suma al ampliar, para que se vea nítido en 4K y pantallas Retina. La resolución se adapta sola para mantener la fluidez.</p>
       </div>
     </div>
   </footer>

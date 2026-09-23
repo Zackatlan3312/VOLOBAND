@@ -89,6 +89,13 @@
       deep: hexLin(L.deep), shallow: hexLin(L.shallow), low: hexLin(L.low),
       high: hexLin(L.high), snow: hexLin(L.snow), atmo: hexLin(L.atmo),
       atmoHex: L.atmo,
+      climate: L.climate || 0, wet: L.wet || 0,
+      sat: L.sat === undefined ? 1 : L.sat,
+      veg: L.veg ? hexLin(L.veg).map(function (v) { return v * 2.2; }) : [1, 1, 1],
+      earth: !!L.earth,
+      cloudLon: L.earth ? 0 : L.seed * 2.3,
+      landScale: L.landScale || 3.2,
+      tint: L.tint ? hexLin(L.tint).map(function (v) { return v * 1.9; }) : [1, 1, 1],
       star: starLight(teff || 5772),
       locked: locked,
       tilt: locked ? 0 : (L.tilt !== undefined ? L.tilt : 0.25 + frac(L.seed * 0.37) * 0.25),
@@ -139,8 +146,10 @@
       stars: program(gl, S.VS_STARS, S.FS_STARS),
       planet: program(gl, S.VS_FULL, S.FS_PLANET),
       star: program(gl, S.VS_FULL, S.FS_STAR),
-      orbits: program(gl, S.VS_FULL, S.FS_ORBITS)
+      orbits: program(gl, S.VS_FULL, S.FS_ORBITS),
+      epic: program(gl, S.VS_FULL, S.FS_EPIC)
     };
+    this.initTextures();
     this.vao = gl.createVertexArray();
     this.views = [];
     this.quality = 1;
@@ -162,6 +171,143 @@
     gl.disable(gl.CULL_FACE);
   }
   EXO.Engine = Engine;
+
+  /* ---------- texturas reales (NASA / ESA) ----------
+     Unidades fijas: 1 nubes, 2 terreno (array), 3 Tierra, 4 oceano, 5 fotos EPIC (array) */
+  Engine.prototype.initTextures = function () {
+    const gl = this.gl;
+    this.aniso = gl.getExtension('EXT_texture_filter_anisotropic');
+    this.maxTex = gl.getParameter(gl.MAX_TEXTURE_SIZE);
+    this.tex = { ready: {} };
+    this.texOn = 0;
+    this.texOnTarget = 0;
+    const px = new Uint8Array([0, 0, 0, 255]);
+    const self = this;
+    [[1, gl.TEXTURE_2D], [2, gl.TEXTURE_2D_ARRAY], [3, gl.TEXTURE_2D], [4, gl.TEXTURE_2D], [5, gl.TEXTURE_2D_ARRAY]].forEach(function (d) {
+      const t = gl.createTexture();
+      gl.activeTexture(gl.TEXTURE0 + d[0]);
+      gl.bindTexture(d[1], t);
+      if (d[1] === gl.TEXTURE_2D) gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA8, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, px);
+      else gl.texImage3D(gl.TEXTURE_2D_ARRAY, 0, gl.RGBA8, 1, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, px);
+      gl.texParameteri(d[1], gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+      gl.texParameteri(d[1], gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+      self.tex['u' + d[0]] = t;
+    });
+    gl.activeTexture(gl.TEXTURE0);
+    gl.useProgram(this.P.planet.p);
+    gl.uniform1i(this.P.planet.u.uCloudTex, 1);
+    gl.uniform1i(this.P.planet.u.uLandTex, 2);
+    gl.uniform1i(this.P.planet.u.uEarthTex, 3);
+    gl.uniform1i(this.P.planet.u.uOceanTex, 4);
+    gl.useProgram(this.P.epic.p);
+    gl.uniform1i(this.P.epic.u.uEpic, 5);
+    gl.useProgram(null);
+  };
+
+  /* Descarga con progreso y decodificacion fuera del hilo principal */
+  Engine.prototype.fetchImage = function (url, onBytes) {
+    return fetch(url).then(function (res) {
+      if (!res.ok) throw new Error(url + ' ' + res.status);
+      const total = +res.headers.get('content-length') || 0;
+      if (!res.body || !res.body.getReader) return res.blob();
+      const reader = res.body.getReader();
+      const chunks = [];
+      let got = 0;
+      function pump() {
+        return reader.read().then(function (r) {
+          if (r.done) return new Blob(chunks);
+          chunks.push(r.value);
+          got += r.value.length;
+          if (onBytes) onBytes(got, total);
+          return pump();
+        });
+      }
+      return pump();
+    }).then(function (blob) {
+      if (window.createImageBitmap) {
+        return createImageBitmap(blob, { premultiplyAlpha: 'none', colorSpaceConversion: 'none', imageOrientation: 'none' });
+      }
+      return new Promise(function (ok, fail) {
+        const img = new Image();
+        img.onload = function () { ok(img); };
+        img.onerror = fail;
+        img.src = URL.createObjectURL(blob);
+      });
+    });
+  };
+
+  /* Sube una imagen como textura 2D o como array (capas apiladas en vertical) */
+  Engine.prototype.upload = function (unit, img, o) {
+    const gl = this.gl;
+    const target = o.layers ? gl.TEXTURE_2D_ARRAY : gl.TEXTURE_2D;
+    const t = gl.createTexture();
+    gl.activeTexture(gl.TEXTURE0 + unit);
+    gl.bindTexture(target, t);
+    gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, false);
+    gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, false);
+    gl.pixelStorei(gl.UNPACK_COLORSPACE_CONVERSION_WEBGL, gl.NONE);
+    if (o.layers) {
+      const h = img.height / o.layers;
+      gl.pixelStorei(gl.UNPACK_IMAGE_HEIGHT, h);
+      gl.texImage3D(target, 0, o.internal, img.width, h, o.layers, 0, o.format, gl.UNSIGNED_BYTE, img);
+      gl.pixelStorei(gl.UNPACK_IMAGE_HEIGHT, 0);
+    } else {
+      gl.texImage2D(target, 0, o.internal, o.format, gl.UNSIGNED_BYTE, img);
+    }
+    gl.generateMipmap(target);
+    gl.texParameteri(target, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR);
+    gl.texParameteri(target, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+    gl.texParameteri(target, gl.TEXTURE_WRAP_S, o.wrapS || gl.REPEAT);
+    gl.texParameteri(target, gl.TEXTURE_WRAP_T, o.wrapT || gl.CLAMP_TO_EDGE);
+    if (this.aniso) {
+      gl.texParameterf(target, this.aniso.TEXTURE_MAX_ANISOTROPY_EXT,
+        Math.min(8, gl.getParameter(this.aniso.MAX_TEXTURE_MAX_ANISOTROPY_EXT)));
+    }
+    gl.deleteTexture(this.tex['u' + unit]);
+    this.tex['u' + unit] = t;
+    gl.activeTexture(gl.TEXTURE0);
+    if (img.close) img.close();
+  };
+
+  /* Nubes y terreno (necesarios para el primer cuadro); resuelve cuando estan en la GPU */
+  Engine.prototype.loadCore = function (base, onProgress) {
+    const gl = this.gl, self = this;
+    const big = Math.max(screen.width, screen.height) * (window.devicePixelRatio || 1) >= 2400 && this.maxTex >= 8192;
+    const files = [
+      { url: base + (big ? 'nubes-8k.jpg' : 'nubes-4k.jpg'), size: big ? 4.9e6 : 1.6e6 },
+      { url: base + 'terreno.jpg', size: 1.46e6 }
+    ];
+    const got = [0, 0];
+    function prog(i) {
+      return function (g, t) {
+        got[i] = g; if (t) files[i].size = t;
+        if (onProgress) onProgress((got[0] + got[1]) / (files[0].size + files[1].size));
+      };
+    }
+    return Promise.all([self.fetchImage(files[0].url, prog(0)), self.fetchImage(files[1].url, prog(1))]).then(function (imgs) {
+      self.upload(1, imgs[0], { internal: gl.R8, format: gl.RED, wrapS: gl.REPEAT });
+      self.upload(2, imgs[1], { internal: gl.SRGB8_ALPHA8, format: gl.RGBA, layers: 8, wrapS: gl.MIRRORED_REPEAT, wrapT: gl.MIRRORED_REPEAT });
+      self.tex.ready.core = true;
+      self.texOnTarget = 1;
+    });
+  };
+  Engine.prototype.loadEarth = function (base) {
+    const gl = this.gl, self = this;
+    return Promise.all([this.fetchImage(base + 'tierra-2k.jpg'), this.fetchImage(base + 'tierra-oceano.png')]).then(function (imgs) {
+      self.upload(3, imgs[0], { internal: gl.SRGB8_ALPHA8, format: gl.RGBA, wrapS: gl.REPEAT });
+      self.upload(4, imgs[1], { internal: gl.R8, format: gl.RED, wrapS: gl.REPEAT });
+      self.tex.ready.earth = true;
+    });
+  };
+  Engine.prototype.loadEpic = function (base, layers) {
+    const gl = this.gl, self = this;
+    if (this.tex.epicLoading) return this.tex.epicLoading;
+    this.tex.epicLoading = this.fetchImage(base + 'tierra-epic.jpg').then(function (img) {
+      self.upload(5, img, { internal: gl.RGBA8, format: gl.RGBA, layers: layers, wrapS: gl.CLAMP_TO_EDGE });
+      self.tex.ready.epic = true;
+    });
+    return this.tex.epicLoading;
+  };
 
   Engine.prototype.genStars = function () {
     const gl = this.gl;
@@ -210,15 +356,15 @@
     /* la nebulosa es muy suave: basta con ~1400 px de ancho, a cualquier resolucion */
     const w = Math.max(1, Math.min(Math.round(this.W / 2), 1400));
     const h = Math.max(1, Math.round(w * this.H / this.W));
-    if (!this.tex) { this.tex = gl.createTexture(); this.fbo = gl.createFramebuffer(); }
-    gl.bindTexture(gl.TEXTURE_2D, this.tex);
+    if (!this.nebTex) { this.nebTex = gl.createTexture(); this.fbo = gl.createFramebuffer(); }
+    gl.bindTexture(gl.TEXTURE_2D, this.nebTex);
     gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA8, w, h, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
     gl.bindFramebuffer(gl.FRAMEBUFFER, this.fbo);
-    gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, this.tex, 0);
+    gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, this.nebTex, 0);
     gl.bindFramebuffer(gl.FRAMEBUFFER, null);
     this.fw = w; this.fh = h;
   };
@@ -357,6 +503,30 @@
     gl.uniform3fv(u.uHigh, look.high);
     gl.uniform3fv(u.uSnow, look.snow);
     gl.uniform3fv(u.uAtmo, look.atmo);
+    gl.uniform1f(u.uTexOn, this.texOn);
+    gl.uniform1f(u.uEarth, look.earth && this.tex.ready.earth ? 1 : 0);
+    gl.uniform1f(u.uCloudLon, look.cloudLon);
+    gl.uniform1f(u.uClimate, look.climate);
+    gl.uniform1f(u.uWet, look.wet);
+    gl.uniform1f(u.uSat, look.sat);
+    gl.uniform3fv(u.uVeg, look.veg);
+    gl.uniform1f(u.uLandScale, look.landScale);
+    gl.uniform3fv(u.uTint, look.tint);
+    gl.drawArrays(gl.TRIANGLES, 0, 3);
+  };
+
+  Engine.prototype.drawEpic = function (cx, cy, half, o) {
+    if (!this.scissor(cx - half, cy - half, cx + half, cy + half, o.clip)) return;
+    const gl = this.gl;
+    const u = this.use(this.P.epic);
+    gl.uniform3f(u.uView, cx, cy, half);
+    gl.uniform1f(u.uR, o.R);
+    gl.uniform2f(u.uCur, o.cur[0], o.cur[1]);
+    gl.uniform4fv(u.uA, o.A);
+    gl.uniform4fv(u.uB, o.B);
+    gl.uniform4fv(u.uGeo, o.geo);
+    gl.uniform1f(u.uF, o.f);
+    gl.uniform1f(u.uFade, o.fade);
     gl.drawArrays(gl.TRIANGLES, 0, 3);
   };
 
@@ -374,6 +544,8 @@
   /* ---------- cuadro completo ---------- */
   Engine.prototype.frame = function (st) {
     this.resize();
+    this.texOn += (this.texOnTarget - this.texOn) * Math.min(1, st.dt * 2.5);
+    if (Math.abs(this.texOnTarget - this.texOn) < 0.002) this.texOn = this.texOnTarget;
     const gl = this.gl, W = this.W, H = this.H, s = this.scale;
     this.gpuBegin();
     this._cur = null;
@@ -399,7 +571,7 @@
     const sunVec = sun ? [sun.x * s, H - sun.y * s, Math.max(sun.r * s, 1), sun.k] : [0, 0, 1, 0];
     u = this.use(this.P.comp);
     gl.activeTexture(gl.TEXTURE0);
-    gl.bindTexture(gl.TEXTURE_2D, this.tex);
+    gl.bindTexture(gl.TEXTURE_2D, this.nebTex);
     gl.uniform1i(u.uNeb, 0);
     gl.uniform2f(u.uRes, W, H);
     gl.uniform4fv(u.uSun, sunVec);
@@ -638,6 +810,70 @@
     }
   };
   EXO.SystemView = SystemView;
+
+  /* =====================================================================
+     EpicView: la Tierra real girando, reconstruida con fotos EPIC
+     ===================================================================== */
+  const D2R = Math.PI / 180;
+  function wrap180(d) { return ((d + 540) % 360) - 180; }
+  function EpicView(el, epic, onTime) {
+    this.el = el;
+    this.epic = epic;
+    this.onTime = onTime;
+    this.active = false;
+    this.tau = 6;
+    this.speed = 0.3;
+    this.vel = 0;
+    this.fade = 0;
+    this.lastLabel = '';
+    const self = this;
+    let down = false, lx = 0, lt = 0;
+    el.addEventListener('pointerdown', function (e) { down = true; lx = e.clientX; lt = performance.now(); el.setPointerCapture(e.pointerId); el.classList.add('grabbing'); });
+    el.addEventListener('pointermove', function (e) {
+      if (!down) return;
+      const now = performance.now();
+      const w = el.getBoundingClientRect().width || 300;
+      const d = -(e.clientX - lx) / w * 3.5;
+      self.tau += d;
+      self.vel = d / Math.max((now - lt) / 1000, 0.008);
+      lx = e.clientX; lt = now;
+    });
+    function up() { down = false; el.classList.remove('grabbing'); }
+    el.addEventListener('pointerup', up);
+    el.addEventListener('pointercancel', up);
+    this.dragging = function () { return down; };
+  }
+  EpicView.prototype.render = function (eng, st, vis) {
+    if (!eng.tex.ready.epic) return;
+    const r = this.el.getBoundingClientRect();
+    if (r.width < 2 || r.bottom < -40 || r.top > eng.cssH + 40) return;
+    const s = eng.scale;
+    const F = this.epic.frames, N = F.length;
+    if (!this.dragging()) {
+      this.tau += (this.speed * st.motion + this.vel) * st.dt;
+      this.vel *= Math.pow(0.05, st.dt);
+    }
+    this.tau = ((this.tau % N) + N) % N;
+    this.fade += (1 - this.fade) * Math.min(1, st.dt * 2);
+    const i = Math.floor(this.tau), j = (i + 1) % N, f = this.tau - i;
+    const a = F[i], b = F[j];
+    const lon = a.lon + wrap180(b.lon - a.lon) * f;
+    const lat = a.lat + (b.lat - a.lat) * f;
+    const g = this.epic;
+    eng.drawEpic((r.left + r.width / 2) * s, eng.H - (r.top + r.height / 2) * s, Math.min(r.width, r.height) / 2 * s, {
+      R: 0.9, cur: [lat * D2R, lon * D2R],
+      A: [a.lat * D2R, a.lon * D2R, i, g.r], B: [b.lat * D2R, b.lon * D2R, j, g.r],
+      geo: [g.cx, g.cy, g.cx, g.cy], f: f, fade: this.fade * (vis === undefined ? 1 : vis)
+    });
+    if (this.onTime) {
+      const ma = +a.t.slice(0, 2) * 60 + +a.t.slice(3), mb0 = +b.t.slice(0, 2) * 60 + +b.t.slice(3);
+      const mb = mb0 < ma ? mb0 + 1440 : mb0;
+      const m = Math.round(ma + (mb - ma) * f) % 1440;
+      const label = String(Math.floor(m / 60)).padStart(2, '0') + ':' + String(m % 60).padStart(2, '0');
+      if (label !== this.lastLabel) { this.lastLabel = label; this.onTime(label, lon); }
+    }
+  };
+  EXO.EpicView = EpicView;
 
   EXO.util = { hexLin: hexLin, starLight: starLight, norm: norm, rotY: rotY, mv: mv };
 })();
