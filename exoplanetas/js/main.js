@@ -267,6 +267,31 @@
     return s;
   });
   const sysView = eng ? addView(new EXO.SystemView(sysStage, T1, labels)) : null;
+
+  /* =====================================================================
+     LO QUE SI ES REAL: la Tierra girando con fotos EPIC de la NASA
+     ===================================================================== */
+  const epicTime = $('#epic-time'), epicLon = $('#epic-lon');
+  const epicView = eng ? addView(new EXO.EpicView($('#epic-globe'), EXO.epic, function (t, lon) {
+    epicTime.textContent = t;
+    const l = ((lon + 540) % 360) - 180;
+    epicLon.textContent = Math.abs(Math.round(l)) + '° ' + (l >= 0 ? 'E' : 'O');
+  })) : null;
+  if (eng) {
+    const eio = new IntersectionObserver(function (entries) {
+      if (!entries.some(function (e) { return e.isIntersecting; })) return;
+      eio.disconnect();
+      eng.loadEpic('img/', EXO.epic.frames.length).then(function () {
+        $('#epic-loading').classList.add('done');
+      }).catch(function (err) {
+        console.warn('[Otras Tierras] No se pudieron cargar las fotos EPIC:', err);
+        $('#epic-loading').textContent = 'Las fotos se ven al publicar la página en un servidor';
+      });
+    }, { rootMargin: '150% 0px' });
+    eio.observe($('#reales'));
+  } else {
+    $('#epic-loading').textContent = 'Tu navegador no tiene WebGL2';
+  }
   $$('.sys-controls button').forEach(function (b) {
     b.addEventListener('click', function () {
       if (sysView) sysView.speed = +b.dataset.speed;
@@ -535,6 +560,7 @@
     distancias: [[0.5, 0.3, 0.1], [0.2, 0.14, 0.42]],
     metodos: [[0.12, 0.3, 0.6], [0.4, 0.26, 0.12]],
     vida: [[0.08, 0.45, 0.32], [0.18, 0.2, 0.5]],
+    reales: [[0.1, 0.3, 0.6], [0.3, 0.12, 0.4]],
     historia: [[0.3, 0.16, 0.6], [0.1, 0.36, 0.5]],
     futuro: [[0.46, 0.12, 0.42], [0.1, 0.24, 0.62]]
   };
@@ -646,6 +672,22 @@
     if (id) u.searchParams.set('planeta', id); else u.searchParams.delete('planeta');
     history.replaceState(null, '', u.pathname + u.search + u.hash);
   }
+  let coreDone = !eng;
+  if (eng) {
+    const lt = $('#loader-text'), lb = $('#loader-bar');
+    lt.textContent = 'Descargando imágenes reales de la NASA';
+    eng.loadCore('img/', function (k) {
+      lb.style.transform = 'scaleX(' + Math.min(1, k).toFixed(3) + ')';
+    }).then(function () {
+      coreDone = true;
+      eng.texOn = 1;
+      eng.loadEarth('img/').catch(function (err) { console.warn('[Otras Tierras] Tierra:', err); });
+    }).catch(function (err) {
+      console.warn('[Otras Tierras] Sin texturas reales, se usa el modo procedural:', err);
+      coreDone = true;
+    });
+  }
+
   function loop(now) {
     requestAnimationFrame(loop);
     const dt = Math.min(0.1, Math.max(0.001, (now - last) / 1000));
@@ -679,8 +721,8 @@
       if (diagrams[i].visible && state.modalK < 0.99) diagrams[i].draw(state.t, dt * Math.max(state.motion, 0.05));
     }
     updateHud(dt);
-    if (!started && state.t > 0.35) start();
+    if (!started && state.t > 0.35 && coreDone) start();
   }
   requestAnimationFrame(function (now) { last = now; loop(now); });
-  setTimeout(start, 3500);
+  setTimeout(start, 7000);
 })();

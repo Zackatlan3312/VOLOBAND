@@ -91,6 +91,8 @@ main, .footer { position: relative; z-index: 1; }
   transition: opacity 1.1s var(--ease), visibility 1.1s;
 }
 #loader.done { opacity: 0; visibility: hidden; }
+.loader-bar { width: 180px; height: 2px; border-radius: 2px; background: rgba(255, 255, 255, 0.08); overflow: hidden; }
+.loader-bar i { display: block; height: 100%; width: 100%; background: var(--life); transform-origin: 0 50%; transform: scaleX(0); transition: transform 0.3s; }
 .loader-orbit { position: relative; width: 74px; height: 74px; }
 .loader-orbit i {
   position: absolute; inset: 22px; border-radius: 50%;
@@ -729,7 +731,59 @@ input[type="range"]::-moz-range-thumb {
 .badge.cool { color: var(--cool); }
 .badge.hot { color: var(--hot); }
 
-/* ---------- 08 Historia ---------- */
+/* ---------- 08 Lo que si es real ---------- */
+.real-earth {
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
+  gap: clamp(24px, 4vw, 70px);
+  align-items: center;
+}
+.epic-stage { position: relative; width: 100%; max-width: 660px; aspect-ratio: 1 / 1; margin: 0 auto; }
+.epic-globe { position: absolute; inset: 0; cursor: grab; touch-action: pan-y; }
+.epic-globe.grabbing { cursor: grabbing; }
+.epic-loading {
+  position: absolute; inset: 0; margin: 0;
+  display: grid; place-items: center;
+  font-family: var(--mono); font-size: 12px; letter-spacing: 0.14em; text-transform: uppercase;
+  color: var(--ink-3); pointer-events: none;
+  transition: opacity 0.8s var(--ease);
+}
+.epic-loading.done { opacity: 0; }
+.epic-text h3 { margin: 16px 0 10px; font-size: clamp(28px, 2.6vw, 40px); line-height: 1.05; }
+.epic-text > p { margin: 0; color: var(--ink-2); font-size: 16px; }
+.epic-read {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 1px;
+  margin: 22px 0 0; border-radius: var(--radius-s); overflow: hidden; background: var(--line);
+}
+.epic-read div { padding: 14px 16px; background: rgba(6, 8, 20, 0.92); }
+.epic-read dt { font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-3); }
+.epic-read dd { margin: 4px 0 0; font-family: var(--mono); font-size: 22px; color: var(--ink); font-variant-numeric: tabular-nums; }
+.epic-fact {
+  margin: 20px 0 0 !important; padding: 14px 16px; border-left: 2px solid var(--life);
+  background: rgba(110, 245, 210, 0.05); border-radius: 0 12px 12px 0;
+  font-size: 14.5px !important;
+}
+.credit { display: block; margin-top: 14px; font-size: 12px; color: var(--ink-3); }
+.webb { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+.webb-card {
+  margin: 0; overflow: hidden;
+  border: 1px solid var(--line); border-radius: var(--radius);
+  background: rgba(6, 8, 20, 0.7);
+}
+.webb-img { position: relative; aspect-ratio: 1 / 1; overflow: hidden; background: #000; }
+.webb-img img {
+  width: 100%; height: 100%; object-fit: contain; display: block;
+  animation: kenburns 26s ease-in-out infinite alternate;
+  transition: transform 1.2s var(--ease);
+}
+.webb-card:hover .webb-img img { animation-play-state: paused; transform: scale(1.12); }
+@keyframes kenburns { from { transform: scale(1); } to { transform: scale(1.08) translate(-1%, 1%); } }
+.webb-card figcaption { padding: 20px 22px 22px; }
+.webb-card h4 { margin: 0; font-family: var(--display); font-size: 22px; font-weight: 600; }
+.webb-card p { margin: 10px 0 0; font-size: 14px; color: var(--ink-2); }
+.webb-card small { display: block; margin-top: 12px; font-size: 11.5px; color: var(--ink-3); }
+
+/* ---------- 09 Historia ---------- */
 .chart {
   margin: 0;
   padding: 22px 22px 16px;
@@ -975,6 +1029,8 @@ main, .footer { transition: opacity 0.6s var(--ease); }
   .sys-list { display: none; }
   .sys-stage { height: auto; min-height: 38vh; }
   .methods { grid-template-columns: 1fr; }
+  .real-earth { grid-template-columns: 1fr; }
+  .webb { grid-template-columns: 1fr 1fr; }
   .missions { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .footer-grid { grid-template-columns: 1fr; gap: 28px; }
   .d-grid { grid-template-columns: 1fr; align-content: start; overflow-y: auto; max-height: calc(100vh - 90px); }
@@ -989,6 +1045,7 @@ main, .footer { transition: opacity 0.6s var(--ease); }
   .hero-planet { --S: max(190vw, 118vh); }
   .hero-stats { gap: 18px; padding-bottom: 96px; }
   .hero-stats dt { font-size: 9.5px; letter-spacing: 0.1em; }
+  .hero-stats small { display: block; margin: 4px 0 0; }
   .hero-credit { display: none; }
   .pillars { grid-template-columns: 1fr; }
   .grid { grid-template-columns: 1fr 1fr; gap: 12px; }
@@ -1001,6 +1058,7 @@ main, .footer { transition: opacity 0.6s var(--ease); }
   .card-rank { display: none; }
   .molecules { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .jwst { grid-template-columns: 1fr; }
+  .webb { grid-template-columns: 1fr; }
   .missions { grid-template-columns: 1fr; }
   .dist-row { grid-template-columns: 1fr auto; gap: 6px 12px; padding: 14px 16px; }
   .dist-row.head { display: none; }

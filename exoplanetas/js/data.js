@@ -13,16 +13,18 @@
     phlCandidates: 70
   };
 
-  /* Apariencias base (colores sRGB). Cada planeta las ajusta con su semilla. */
+  /* Apariencias base (colores sRGB). Cada planeta las ajusta con su semilla.
+     climate: -1 frio .. +1 calido; wet: -1 seco .. +1 humedo (eligen los biomas reales);
+     sat: saturacion del terreno real; veg: tinte de la vegetacion. */
   const LOOKS = {
-    terran: { deep: '#07224d', shallow: '#1b6aa3', low: '#3d6a2c', high: '#8b7650', snow: '#f1f5f9', atmo: '#63a8ff', sea: 0.08, ice: 0.1, eye: -2, cloud: 0.5, bands: 0, atmoK: 1, haze: 0, relief: 0.5 },
-    eyeball: { deep: '#062049', shallow: '#17639a', low: '#4b4638', high: '#7a6d5c', snow: '#e8f0f7', atmo: '#86b6ff', sea: 0.02, ice: 0, eye: 0.35, cloud: 0.55, bands: 0, atmoK: 0.85, haze: 0, relief: 0.45 },
-    ocean: { deep: '#041a42', shallow: '#177bb0', low: '#c8b487', high: '#5f7447', snow: '#f4f8fb', atmo: '#76c1ff', sea: 0.26, ice: 0.08, eye: -2, cloud: 0.62, bands: 0, atmoK: 1.05, haze: 0.08, relief: 0.35 },
-    arid: { deep: '#18324f', shallow: '#3c7e8c', low: '#ad7443', high: '#dcb27a', snow: '#f4ebdd', atmo: '#ffc58c', sea: -0.16, ice: 0.02, eye: -2, cloud: 0.28, bands: 0, atmoK: 0.9, haze: 0.12, relief: 0.6 },
-    cold: { deep: '#0b2240', shallow: '#2a6386', low: '#5b3a36', high: '#8a7d74', snow: '#edf4fb', atmo: '#9ac6ff', sea: 0.06, ice: 0.42, eye: -2, cloud: 0.4, bands: 0, atmoK: 0.9, haze: 0, relief: 0.45 },
-    hycean: { deep: '#0c3462', shallow: '#3796c0', low: '#8fd4dc', high: '#e6f4f7', snow: '#f4fbff', atmo: '#7ad6ff', sea: 1, ice: 0, eye: -2, cloud: 0.35, bands: 1, atmoK: 1.35, haze: 0.28, relief: 0 },
-    barren: { deep: '#2b2622', shallow: '#3b342e', low: '#5a4f45', high: '#8c7d6e', snow: '#b9ada0', atmo: '#000000', sea: -1, ice: 0, eye: -2, cloud: 0, bands: 0, atmoK: 0, haze: 0, relief: 0.9 },
-    icy: { deep: '#0e2a4a', shallow: '#3b7ea6', low: '#667080', high: '#a9b4c2', snow: '#eef5fc', atmo: '#a9d2ff', sea: 0.0, ice: 0.75, eye: -2, cloud: 0.25, bands: 0, atmoK: 0.6, haze: 0, relief: 0.5 }
+    terran: { deep: '#07224d', shallow: '#1b6aa3', low: '#3d6a2c', high: '#8b7650', snow: '#f1f5f9', atmo: '#63a8ff', sea: 0.08, ice: 0.1, eye: -2, cloud: 0.5, bands: 0, atmoK: 1, haze: 0, relief: 0.5, climate: 0.1, wet: 0.25 },
+    eyeball: { deep: '#062049', shallow: '#17639a', low: '#4b4638', high: '#7a6d5c', snow: '#e8f0f7', atmo: '#86b6ff', sea: 0.02, ice: 0, eye: 0.35, cloud: 0.55, bands: 0, atmoK: 0.85, haze: 0, relief: 0.45, climate: 0.2, wet: -0.2 },
+    ocean: { deep: '#041a42', shallow: '#177bb0', low: '#c8b487', high: '#5f7447', snow: '#f4f8fb', atmo: '#76c1ff', sea: 0.26, ice: 0.08, eye: -2, cloud: 0.62, bands: 0, atmoK: 1.05, haze: 0.08, relief: 0.35, climate: 0.3, wet: 0.7 },
+    arid: { deep: '#18324f', shallow: '#3c7e8c', low: '#ad7443', high: '#dcb27a', snow: '#f4ebdd', atmo: '#ffc58c', sea: -0.16, ice: 0.02, eye: -2, cloud: 0.28, bands: 0, atmoK: 0.9, haze: 0.12, relief: 0.6, climate: 0.75, wet: -0.75 },
+    cold: { deep: '#0b2240', shallow: '#2a6386', low: '#5b3a36', high: '#8a7d74', snow: '#edf4fb', atmo: '#9ac6ff', sea: 0.06, ice: 0.42, eye: -2, cloud: 0.4, bands: 0, atmoK: 0.9, haze: 0, relief: 0.45, climate: -0.55, wet: 0.2 },
+    hycean: { deep: '#0c3462', shallow: '#3796c0', low: '#8fd4dc', high: '#e6f4f7', snow: '#f4fbff', atmo: '#7ad6ff', sea: 1, ice: 0, eye: -2, cloud: 0.35, bands: 1, atmoK: 1.35, haze: 0.28, relief: 0, climate: 0, wet: 0 },
+    barren: { deep: '#2b2622', shallow: '#3b342e', low: '#5a4f45', high: '#8c7d6e', snow: '#b9ada0', atmo: '#000000', sea: -1, ice: 0, eye: -2, cloud: 0, bands: 0, atmoK: 0, haze: 0, relief: 0.9, climate: 0.9, wet: -1, sat: 0.25, tint: '#a9a39c' },
+    icy: { deep: '#0e2a4a', shallow: '#3b7ea6', low: '#667080', high: '#a9b4c2', snow: '#eef5fc', atmo: '#a9d2ff', sea: 0.0, ice: 0.75, eye: -2, cloud: 0.25, bands: 0, atmoK: 0.6, haze: 0, relief: 0.5, climate: -1, wet: 0, sat: 0.6 }
   };
   EXO.LOOKS = LOOKS;
 
@@ -35,7 +37,7 @@
       rad: 1.05, radKind: 'estimado', mass: 1.16, massKind: 'minima',
       per: 4.90634, a: 0.0259, insol: 1.08, teq: 277, year: 2019,
       method: 'Velocidad radial', facility: 'Calar Alto · CARMENES',
-      look: { base: 'eyeball', seed: 11.3, eye: -0.05, sea: 0.0, cloud: 0.62, atmo: '#8fbfff' },
+      look: { base: 'eyeball', seed: 11.3, eye: -0.05, sea: 0.0, cloud: 0.62, atmo: '#8fbfff', climate: 0.35, wet: 0.2 },
       blurb: 'Recibe casi exactamente la misma energía que la Tierra recibe del Sol, por eso encabeza los índices de similitud. Orbita una enana roja diminuta y bastante tranquila, completa su año en menos de cinco días y seguramente muestra siempre la misma cara a su estrella.',
       facts: ['Año de 4.9 días', 'A solo 12.5 años luz', 'Encontrado por el espectrógrafo CARMENES en España']
     },
@@ -45,7 +47,7 @@
       rad: 1.02, radKind: 'estimado', mass: 1.05, massKind: 'minima',
       per: 11.416, a: 0.0455, insol: 0.35, teq: 209, year: 2019,
       method: 'Velocidad radial', facility: 'Calar Alto · CARMENES',
-      look: { base: 'eyeball', seed: 27.9, eye: 0.55, cloud: 0.4 },
+      look: { base: 'eyeball', seed: 27.9, eye: 0.55, cloud: 0.4, climate: -0.5 },
       blurb: 'Hermano exterior de Teegarden b. Recibe apenas un tercio de la luz que llega a la Tierra, así que probablemente es un mundo helado. Con una atmósfera densa podría conservar un mar líquido justo bajo su estrella, como una pupila azul en un ojo de hielo.',
       facts: ['Año de 11.4 días', 'Borde exterior de la zona habitable', 'Masa parecida a la terrestre']
     },
@@ -55,7 +57,7 @@
       rad: 1.073, radKind: 'medido', mass: 1.25, massKind: 'estimada',
       per: 37.42396, a: 0.1633, insol: 0.85, teq: 268.8, year: 2020,
       method: 'Tránsito', facility: 'TESS (NASA)',
-      look: { base: 'terran', seed: 4.7, sea: 0.12, cloud: 0.55, ice: 0.14, locked: true },
+      look: { base: 'terran', seed: 4.7, sea: 0.12, cloud: 0.55, ice: 0.14, locked: true, climate: 0.0, wet: 0.35 },
       blurb: 'El primer planeta del tamaño de la Tierra que el telescopio TESS encontró en la zona habitable de su estrella. Recibe el 86 % de la energía que recibe nuestro planeta. Simulaciones climáticas muestran que, con una atmósfera como la terrestre, podría mantener agua líquida.',
       facts: ['Primer hallazgo de este tipo de TESS', 'Año de 37 días', 'Su estrella es una enana roja poco activa']
     },
@@ -65,7 +67,7 @@
       rad: 0.953, radKind: 'medido', mass: 0.818, massKind: 'estimada',
       per: 27.80978, a: 0.134, insol: 1.27, teq: 272.9, year: 2023,
       method: 'Tránsito', facility: 'TESS (NASA)',
-      look: { base: 'terran', seed: 19.2, sea: 0.02, cloud: 0.48, ice: 0.05, low: '#6b7a34', high: '#a88a5a', locked: true },
+      look: { base: 'terran', seed: 19.2, sea: 0.02, cloud: 0.48, ice: 0.05, low: '#6b7a34', high: '#a88a5a', locked: true, climate: 0.45, wet: -0.1 },
       blurb: 'Descubierto en 2023 en el mismo sistema que TOI-700 d. Es un 5 % más pequeño que la Tierra y orbita en la zona habitable optimista. Así, TOI-700 es uno de los pocos sistemas conocidos con dos mundos del tamaño de la Tierra en esa franja.',
       facts: ['95 % del tamaño de la Tierra', 'Año de 28 días', 'Vecino interior de TOI-700 d']
     },
@@ -75,7 +77,7 @@
       rad: 1.06, radKind: 'medido', mass: 1.2, massKind: 'estimada',
       per: 19.53527, a: 0.0649, insol: 0.75, teq: 234, year: 2020,
       method: 'Tránsito', facility: 'Kepler (NASA)',
-      look: { base: 'terran', seed: 33.1, sea: 0.16, cloud: 0.58, ice: 0.18, locked: true },
+      look: { base: 'terran', seed: 33.1, sea: 0.16, cloud: 0.58, ice: 0.18, locked: true, climate: -0.15, wet: 0.4 },
       blurb: 'Estuvo escondido en los datos de Kepler: un algoritmo lo había descartado como falsa alarma y un equipo lo rescató al revisarlos a mano en 2020. Tiene un tamaño y una energía recibida muy parecidos a los de la Tierra.',
       facts: ['Rescatado de datos de archivo', '1.06 veces el radio terrestre', 'Año de 19.5 días']
     },
@@ -85,7 +87,7 @@
       rad: 1.29, radKind: 'medido', mass: 2.21, massKind: 'estimada',
       per: 24.158868, a: 0.106, insol: 1.2, teq: 286.3, year: 2016,
       method: 'Tránsito', facility: 'K2 (Kepler, NASA)',
-      look: { base: 'terran', seed: 51.8, sea: 0.0, cloud: 0.45, ice: 0.04, low: '#57702f', high: '#b08a58', locked: true },
+      look: { base: 'terran', seed: 51.8, sea: 0.0, cloud: 0.45, ice: 0.04, low: '#57702f', high: '#b08a58', locked: true, climate: 0.5, wet: 0.1 },
       blurb: 'Una súper-Tierra templada, un 29 % más grande que nuestro planeta, que recibe un poco más de luz que nosotros. Es el más externo de los cuatro planetas conocidos de su sistema y el único dentro de la zona habitable.',
       facts: ['Descubierto por la misión K2', 'Año de 24 días', '4 planetas conocidos en el sistema']
     },
@@ -105,7 +107,7 @@
       rad: 1.11, radKind: 'estimado', mass: 1.4, massKind: 'minima',
       per: 9.8658, a: 0.0496, insol: 1.38, teq: 301, year: 2017,
       method: 'Velocidad radial', facility: 'La Silla · HARPS (ESO)',
-      look: { base: 'arid', seed: 14.4, sea: -0.08, cloud: 0.36, locked: true },
+      look: { base: 'arid', seed: 14.4, sea: -0.08, cloud: 0.36, locked: true, climate: 0.65, wet: -0.5 },
       blurb: 'Su estrella es una de las enanas rojas más tranquilas que se conocen, con pocas llamaradas que pudieran arrancarle la atmósfera. Recibe un 38 % más de luz que la Tierra. Además, Ross 128 se acerca a nosotros: dentro de unos 79,000 años será la estrella más cercana al Sol.',
       facts: ['A 11 años luz', 'Estrella muy tranquila', 'Año de 9.9 días']
     },
@@ -125,7 +127,7 @@
       rad: 1.02, radKind: 'estimado', mass: 1.055, massKind: 'minima',
       per: 11.18465, a: 0.04848, insol: 0.641, teq: 218, year: 2016,
       method: 'Velocidad radial', facility: 'ESO · campaña Pale Red Dot',
-      look: { base: 'eyeball', seed: 2.2, eye: 0.18, cloud: 0.55, low: '#5a4a3a' },
+      look: { base: 'eyeball', seed: 2.2, eye: 0.18, cloud: 0.55, low: '#5a4a3a', climate: 0.1, wet: -0.4 },
       blurb: 'El exoplaneta más cercano a nosotros: su luz tarda poco más de cuatro años en llegar. Orbita la estrella más próxima al Sol, una enana roja que lanza llamaradas violentas capaces de erosionar atmósferas. Si conserva una, podría tener un océano frente a su estrella.',
       facts: ['A 4.24 años luz', 'Año de 11.2 días', 'Estrella con fuertes llamaradas']
     },
@@ -155,7 +157,7 @@
       rad: 0.93, radKind: 'medido', mass: 0.95, massKind: 'estimada',
       per: 12.761418, a: 0.067, insol: 1.62, teq: 314.6, year: 2024,
       method: 'Tránsito', facility: 'TESS (NASA)',
-      look: { base: 'arid', seed: 42.2, sea: -0.02, cloud: 0.4, haze: 0.2, atmo: '#ffd3a0', locked: true },
+      look: { base: 'arid', seed: 42.2, sea: -0.02, cloud: 0.4, haze: 0.2, atmo: '#ffd3a0', locked: true, climate: 0.9, wet: -0.6 },
       blurb: 'Templado pero más cálido que la Tierra: recibe 1.6 veces nuestra luz, entre lo que reciben la Tierra y Venus. Es un laboratorio ideal para entender por qué la Tierra conservó su agua y Venus la perdió, y el James Webb puede estudiarlo gracias a su cercanía.',
       facts: ['Descubierto en 2024', 'A 40 años luz', 'Entre la Tierra y Venus']
     },
@@ -165,7 +167,7 @@
       rad: 1.63, radKind: 'medido', mass: 3.29, massKind: 'estimada',
       per: 384.843, a: 1.046, insol: 1.1, teq: 265, year: 2015,
       method: 'Tránsito', facility: 'Kepler (NASA)',
-      look: { base: 'terran', seed: 23.9, sea: 0.02, cloud: 0.45, low: '#6a6a2e', high: '#b38a55', atmo: '#7fb6ff', haze: 0.05 },
+      look: { base: 'terran', seed: 23.9, sea: 0.02, cloud: 0.45, low: '#6a6a2e', high: '#b38a55', atmo: '#7fb6ff', haze: 0.05, climate: 0.55, wet: -0.35 },
       blurb: 'El "primo mayor" de la Tierra. Orbita una estrella casi gemela del Sol y su año dura 385 días. Su estrella es unos 1,500 millones de años más vieja que el Sol, así que el planeta podría estar viviendo el futuro que le espera a la Tierra cuando nuestro Sol brille más.',
       facts: ['Año de 385 días', 'Estrella tipo Sol', 'A 1,800 años luz']
     },
@@ -175,7 +177,7 @@
       rad: 1.34, radKind: 'medido', mass: 2.36, massKind: 'estimada',
       per: 112.3053, a: 0.409, insol: 0.66, teq: 241, year: 2015,
       method: 'Tránsito', facility: 'Kepler (NASA)',
-      look: { base: 'terran', seed: 3.3, sea: 0.1, cloud: 0.52, ice: 0.18, low: '#2f6a34', high: '#8d7a52' },
+      look: { base: 'terran', seed: 3.3, sea: 0.1, cloud: 0.52, ice: 0.18, low: '#2f6a34', high: '#8d7a52', climate: 0.05, wet: 0.35 },
       blurb: 'Orbita una enana naranja, un tipo de estrella longeva y estable que muchos consideran ideal para la vida. Un estudio de 2021 calculó que recibe suficiente luz para sostener una biosfera con fotosíntesis parecida a la terrestre.',
       facts: ['Estrella tipo K', 'Año de 112 días', 'Luz suficiente para la fotosíntesis']
     },
@@ -215,7 +217,7 @@
       rad: 1.41, radKind: 'medido', mass: null, massKind: null,
       per: 267.291, a: 0.718, insol: 0.5, teq: 208, year: 2013,
       method: 'Tránsito', facility: 'Kepler (NASA)',
-      look: { base: 'cold', seed: 45.1, sea: 0.12, ice: 0.5, cloud: 0.42, low: '#3d4f3a' },
+      look: { base: 'cold', seed: 45.1, sea: 0.12, ice: 0.5, cloud: 0.42, low: '#3d4f3a', climate: -0.45, wet: 0.35 },
       blurb: 'Probablemente rocoso. Recibe la mitad de la luz que la Tierra, pero con suficiente dióxido de carbono en su atmósfera podría mantener océanos líquidos. Su sistema tiene otro candidato en la zona habitable: Kepler-62 e.',
       facts: ['Año de 267 días', 'Posibles casquetes polares', 'Dos mundos en zona habitable']
     },
@@ -245,7 +247,7 @@
       rad: 1.17, radKind: 'medido', mass: 1.71, massKind: 'estimada',
       per: 129.9441, a: 0.432, insol: 0.3, teq: 177, year: 2014,
       method: 'Tránsito', facility: 'Kepler (NASA)',
-      look: { base: 'cold', seed: 21.5, sea: 0.08, ice: 0.38, cloud: 0.4, low: '#6b3a33', high: '#8d7568' },
+      look: { base: 'cold', seed: 21.5, sea: 0.08, ice: 0.38, cloud: 0.4, low: '#6b3a33', high: '#8d7568', climate: -0.35, wet: 0.5, veg: '#c0583e' },
       blurb: 'El primer planeta del tamaño de la Tierra descubierto en la zona habitable de otra estrella. Recibe un tercio de la energía que recibe la Tierra: al mediodía, su cielo tendría el brillo de nuestra hora dorada, poco antes del atardecer.',
       facts: ['Primero del tamaño de la Tierra en zona habitable', 'Año de 130 días', 'Mediodía como un atardecer']
     }
@@ -255,12 +257,27 @@
   EXO.earth = {
     id: 'tierra', name: 'Tierra', full: 'Tierra', host: 'Sol', spec: 'G2 V', teff: 5772, pc: 0,
     rad: 1, mass: 1, per: 365.25, a: 1, insol: 1, teq: 255,
-    look: { base: 'terran', seed: 1.0, sea: 0.13, ice: 0.14, cloud: 0.52, low: '#3b6b2a', high: '#9a8055' }
+    look: { base: 'terran', seed: 1.0, sea: 0.13, ice: 0.14, cloud: 0.52, low: '#3b6b2a', high: '#9a8055', earth: true, tilt: 0.41 }
   };
   EXO.solar = [
-    { id: 'marte', name: 'Marte', rad: 0.532, teff: 5772, look: { base: 'arid', seed: 66.6, sea: -1, cloud: 0, ice: 0.08, low: '#9a4b2b', high: '#c8764a', snow: '#f3ece6', atmo: '#e8a888', atmoK: 0.25, haze: 0 } },
+    { id: 'marte', name: 'Marte', rad: 0.532, teff: 5772, look: { base: 'arid', seed: 66.6, sea: -1, cloud: 0, ice: 0.06, low: '#9a4b2b', high: '#c8764a', snow: '#e3b596', atmo: '#e8a888', atmoK: 0.25, haze: 0, climate: 0.9, wet: -1, tint: '#d98a66', sat: 1.2 } },
     { id: 'neptuno', name: 'Neptuno', rad: 3.88, teff: 5772, look: { base: 'hycean', seed: 88.1, deep: '#1b3f9a', shallow: '#3563c9', low: '#6f9ae8', high: '#dbe8ff', atmo: '#6c9dff', cloud: 0.18 } }
   ];
+
+  /* Fotos reales de la Tierra: camara EPIC de la NASA (satelite DSCOVR), 20 sep 2026.
+     cx, cy, r: centro y radio del disco en la imagen (normalizados). */
+  EXO.epic = {
+    date: '20 de septiembre de 2026',
+    frames: [
+      { t: '00:59', lat: 6.196, lon: 163.301 }, { t: '02:47', lat: 6.196, lon: 136.187 },
+      { t: '04:35', lat: 6.196, lon: 109.204 }, { t: '06:23', lat: 6.174, lon: 82.134 },
+      { t: '08:11', lat: 6.145, lon: 55.071 }, { t: '10:00', lat: 6.174, lon: 28.103 },
+      { t: '11:48', lat: 6.152, lon: 1.055 }, { t: '13:36', lat: 6.108, lon: -26.016 },
+      { t: '15:24', lat: 6.13, lon: -53.064 }, { t: '17:12', lat: 6.108, lon: -80.112 },
+      { t: '19:00', lat: 6.116, lon: -107.102 }, { t: '22:36', lat: 6.108, lon: -161.191 }
+    ],
+    cx: 0.5, cy: 0.5, r: 0.3705
+  };
 
   /* Sistema TRAPPIST-1 (Agol et al. 2021) */
   EXO.trappist = {
