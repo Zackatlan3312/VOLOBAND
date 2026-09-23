@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Otras Tierras · Exoplanetas potencialmente habitables</title>
+  <meta name="description" content="Atlas visual e interactivo de los exoplanetas potencialmente habitables: la zona habitable, 22 mundos parecidos a la Tierra, TRAPPIST-1, distancias, búsqueda de vida y las misiones que vienen. Datos del NASA Exoplanet Archive.">
+  <meta name="theme-color" content="#02030a">
+  <meta name="color-scheme" content="dark">
+  <meta property="og:title" content="Otras Tierras · Exoplanetas potencialmente habitables">
+  <meta property="og:description" content="Un viaje visual en tiempo real por los mundos que podrían parecerse al nuestro.">
+  <meta property="og:type" content="website">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cdefs%3E%3CradialGradient id='g' cx='38%25' cy='35%25' r='70%25'%3E%3Cstop offset='0' stop-color='%238fe9ff'/%3E%3Cstop offset='.55' stop-color='%231d5fb0'/%3E%3Cstop offset='1' stop-color='%23061534'/%3E%3C/radialGradient%3E%3C/defs%3E%3Ccircle cx='32' cy='32' r='22' fill='url(%23g)'/%3E%3Cellipse cx='32' cy='32' rx='30' ry='9' fill='none' stroke='%236ef5d2' stroke-width='2.5' transform='rotate(-20 32 32)'/%3E%3C/svg%3E">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&family=Space+Grotesk:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <canvas id="gl" aria-hidden="true"></canvas>
+
+  <div id="loader" role="status" aria-live="polite">
+    <div class="loader-orbit"><i></i><b></b></div>
+    <p class="loader-text">Calibrando el telescopio<span>…</span></p>
+  </div>
+
+  <!-- ============ NAVEGACION ============ -->
+  <header class="nav" id="nav">
+    <a class="brand" href="#inicio" aria-label="Otras Tierras, inicio">
+      <svg viewBox="0 0 40 40" aria-hidden="true"><circle cx="20" cy="20" r="9" /><ellipse cx="20" cy="20" rx="18" ry="6" transform="rotate(-22 20 20)" /></svg>
+      <span>Otras Tierras</span>
+    </a>
+    <nav class="nav-links" id="nav-links" aria-label="Secciones">
+      <a href="#zona">Zona habitable</a>
+      <a href="#catalogo">Catálogo</a>
+      <a href="#tamanos">Tamaños</a>
+      <a href="#trappist">TRAPPIST-1</a>
+      <a href="#distancias">Distancias</a>
+      <a href="#vida">Vida</a>
+      <a href="#futuro">Futuro</a>
+    </nav>
+    <button class="nav-toggle" id="nav-toggle" aria-label="Abrir menú" aria-expanded="false" aria-controls="nav-links"><span></span><span></span></button>
+    <div class="nav-progress" aria-hidden="true"><i id="nav-progress"></i></div>
+  </header>
+
+  <main id="main">
+    <!-- ============ HERO ============ -->
+    <section id="inicio" class="hero">
+      <div class="hero-planet" id="hero-planet" role="img" aria-label="Recreación artística de un exoplaneta templado al amanecer"></div>
+      <div class="hero-inner">
+        <p class="eyebrow hero-in" style="--d:.1s">Atlas visual · Exoplanetas potencialmente habitables</p>
+        <h1 class="hero-title">
+          <span class="hero-in" style="--d:.25s">Otras</span>
+          <span class="hero-in grad" style="--d:.4s">Tierras</span>
+        </h1>
+        <p class="hero-lede hero-in" style="--d:.6s">Hay <strong data-count="6366">6,366</strong> planetas confirmados fuera del Sistema Solar. Solo unas decenas podrían tener agua líquida en su superficie. Este es el retrato de los más parecidos a nuestro hogar, renderizado en tiempo real.</p>
+        <div class="hero-cta hero-in" style="--d:.8s">
+          <a class="btn primary" href="#catalogo">Explorar los mundos</a>
+          <a class="btn ghost" href="#zona">¿Qué es la zona habitable?</a>
+        </div>
+      </div>
+      <dl class="hero-stats hero-in" style="--d:1s">
+        <div><dt>Exoplanetas confirmados</dt><dd><span data-count="6366">6,366</span></dd></div>
+        <div><dt>Candidatos a habitables</dt><dd>~<span data-count="70">70</span></dd></div>
+        <div><dt>El más cercano</dt><dd><span data-count="4.24" data-dec="2">4.24</span><small>años luz</small></dd></div>
+      </dl>
+      <a class="scroll-cue" href="#zona" aria-label="Bajar a la siguiente sección"><span></span></a>
+      <p class="hero-credit">Recreación artística de Kepler-442 b amaneciendo bajo su enana naranja</p>
+    </section>
+
+    <!-- ============ 01 ZONA HABITABLE ============ -->
+    <section id="zona" class="section">
+      <div class="section-head" data-reveal>
+        <span class="kicker">01 · La franja de la vida</span>
+        <h2>La zona habitable</h2>
+        <p class="lede">Es la región alrededor de una estrella donde un planeta rocoso con atmósfera podría mantener <em>agua líquida</em> en su superficie. Demasiado cerca, el agua hierve y escapa al espacio. Demasiado lejos, se congela. Mueve la temperatura de la estrella y mira cómo se desplaza la franja.</p>
+      </div>
+
+      <div class="hz" data-reveal>
+        <div class="hz-view">
+          <canvas id="hz-canvas" aria-label="Diagrama de la zona habitable según la temperatura de la estrella" role="img"></canvas>
+          <ul class="hz-legend" aria-hidden="true">
+            <li><i class="hot"></i>Demasiado caliente</li>
+            <li><i class="opt"></i>Zona habitable optimista</li>
+            <li><i class="con"></i>Zona habitable conservadora</li>
+            <li><i class="cold"></i>Demasiado fría</li>
+          </ul>
+          <p class="hz-scale" id="hz-scale"></p>
+        </div>
+        <div class="hz-panel">
+          <label class="hz-label" for="hz-temp">Temperatura de la estrella <output id="hz-temp-out">5,772 K</output></label>
+          <input type="range" id="hz-temp" min="2600" max="7200" step="1" value="5772">
+          <div class="hz-presets" role="group" aria-label="Estrellas de ejemplo">
+            <button data-t="2566">TRAPPIST-1</button>
+            <button data-t="2900">Proxima</button>
+            <button data-t="3459">TOI-700</button>
+            <button data-t="4402">Kepler-442</button>
+            <button data-t="5772" class="on">Sol</button>
+            <button data-t="6600">Tipo F</button>
+          </div>
+          <dl class="hz-readout">
+            <div><dt>Tipo de estrella</dt><dd id="hz-type">—</dd></div>
+            <div><dt>Luminosidad</dt><dd id="hz-lum">—</dd></div>
+            <div><dt>Zona habitable</dt><dd id="hz-range">—</dd></div>
+            <div><dt>Un año en su centro</dt><dd id="hz-year">—</dd></div>
+          </dl>
+          <p class="hz-note" id="hz-note"></p>
+        </div>
+      </div>
+
+      <div class="pillars">
+        <article class="pillar" data-reveal>
+          <svg viewBox="0 0 48 48" aria-hidden="true"><circle cx="24" cy="24" r="15"/><path d="M12 30c6-3 10 3 17 0s8-2 8-2"/></svg>
+          <h3>Tamaño rocoso</h3>
+          <p>Por encima de unos 1.6 radios terrestres, la mayoría de los planetas conocidos retienen tanto gas que ya no tienen superficie sólida.</p>
+        </article>
+        <article class="pillar" data-reveal style="--d:.08s">
+          <svg viewBox="0 0 48 48" aria-hidden="true"><circle cx="24" cy="24" r="11"/><circle cx="24" cy="24" r="18" stroke-dasharray="3 4"/></svg>
+          <h3>Una atmósfera</h3>
+          <p>Mantiene la presión que el agua líquida necesita, reparte el calor entre el día y la noche y filtra la radiación dañina.</p>
+        </article>
+        <article class="pillar" data-reveal style="--d:.16s">
+          <svg viewBox="0 0 48 48" aria-hidden="true"><path d="M24 7c7 10 12 16 12 23a12 12 0 0 1-24 0c0-7 5-13 12-23z"/></svg>
+          <h3>Agua líquida</h3>
+          <p>Es el disolvente de toda la química de la vida que conocemos. Por eso la búsqueda empieza donde el agua puede existir.</p>
+        </article>
+        <article class="pillar" data-reveal style="--d:.24s">
+          <svg viewBox="0 0 48 48" aria-hidden="true"><circle cx="24" cy="24" r="8"/><path d="M24 6v6M24 36v6M6 24h6M36 24h6M11 11l4 4M33 33l4 4M11 37l4-4M33 15l4-4"/></svg>
+          <h3>Una estrella estable</h3>
+          <p>Las enanas rojas viven billones de años, pero de jóvenes lanzan llamaradas que pueden arrancar atmósferas. Además, sus planetas suelen mostrarles siempre la misma cara.</p>
+        </article>
+      </div>
+    </section>
+
+    <!-- ============ 02 CATALOGO ============ -->
+    <section id="catalogo" class="section">
+      <div class="section-head" data-reveal>
+        <span class="kicker">02 · Catálogo</span>
+        <h2>22 mundos que se parecen a casa</h2>
+        <p class="lede">Ordenados por su <em>Índice de Similitud con la Tierra</em> (IST), que compara el tamaño y la energía que reciben de su estrella: 1.00 sería una Tierra gemela. Toca cualquiera para abrir su expediente.</p>
+      </div>
+      <div class="toolbar" data-reveal>
+        <div class="chips" role="group" aria-label="Filtrar por tipo de estrella">
+          <button class="chip on" data-filter="all">Todos <span></span></button>
+          <button class="chip" data-filter="M">Enanas rojas <span></span></button>
+          <button class="chip" data-filter="K">Enanas naranjas <span></span></button>
+          <button class="chip" data-filter="G">Tipo Sol <span></span></button>
+        </div>
+        <div class="seg" role="group" aria-label="Ordenar">
+          <span class="seg-label">Ordenar</span>
+          <button class="on" data-sort="esi">Similitud</button>
+          <button data-sort="ly">Distancia</button>
+          <button data-sort="rad">Tamaño</button>
+          <button data-sort="year">Año</button>
+        </div>
+      </div>
+      <div class="grid" id="grid"></div>
+      <p class="footnote" data-reveal>IST calculado con el radio y el flujo estelar a partir de los datos del NASA Exoplanet Archive. En planetas detectados por velocidad radial el radio es una estimación basada en su masa mínima. La <em>temperatura de equilibrio</em> no incluye efecto invernadero: con ese criterio, la Tierra estaría a −18 °C.</p>
+    </section>
+
+    <!-- ============ 03 TAMAÑOS ============ -->
+    <section id="tamanos" class="hscroll">
+      <div class="hscroll-sticky">
+        <div class="section-head compact">
+          <span class="kicker">03 · A escala</span>
+          <h2>Del tamaño de la Tierra, o un poco más</h2>
+          <p class="lede">Solo planetas con radio medido por tránsito, a la misma escala y de menor a mayor. Marte sirve de referencia; Neptuno, con 3.9 radios terrestres, no cabría en esta fila.</p>
+        </div>
+        <div class="strip-wrap" id="strip-wrap">
+          <div class="strip" id="strip"></div>
+        </div>
+        <div class="strip-foot">
+          <div class="strip-progress" aria-hidden="true"><i id="strip-progress"></i></div>
+          <span class="strip-hint">Sigue bajando para recorrer la fila</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ 04 TRAPPIST-1 ============ -->
+    <section id="trappist" class="story">
+      <div class="story-sticky">
+        <div class="story-text">
+          <span class="kicker">04 · Un sistema extraordinario</span>
+          <h2>TRAPPIST-1: siete mundos, una estrella</h2>
+          <div class="steps">
+            <p class="step on" data-step="0"><b>Así lo vemos desde la Tierra: de canto.</b> Cada vez que un planeta cruza frente a su estrella, la luz baja una fracción mínima. Con esas sombras se descubrieron los siete.</p>
+            <p class="step" data-step="1"><b>Todos son rocosos y caben dentro de la órbita de Mercurio.</b> Un año en el planeta más interno dura 36 horas. Sus periodos forman una cadena de resonancias casi musical: 8:5, 5:3, 3:2, 3:2, 4:3 y 3:2.</p>
+            <p class="step" data-step="2"><b>Tres de ellos, e, f y g, están en la zona habitable.</b> El James Webb ya descartó atmósferas densas en b y c, los más calientes. Ahora observa a e para buscar una atmósfera secundaria como la terrestre.</p>
+          </div>
+          <div class="sys-controls" role="group" aria-label="Velocidad de la simulación">
+            <span>Velocidad</span>
+            <button data-speed="0">Pausa</button>
+            <button data-speed="0.9" class="on">1 día/s</button>
+            <button data-speed="4">4 días/s</button>
+          </div>
+          <ul class="sys-list" id="sys-list"></ul>
+        </div>
+        <div class="sys-stage" id="sys-stage" role="img" aria-label="Simulación del sistema TRAPPIST-1 con sus siete planetas en órbita">
+          <div class="sys-labels" id="sys-labels"></div>
+          <p class="sys-note">Tamaños de planetas y estrella exagerados · órbitas a escala</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ 05 DISTANCIAS ============ -->
+    <section id="distancias" class="section">
+      <div class="section-head" data-reveal>
+        <span class="kicker">05 · Qué tan lejos</span>
+        <h2>Cerca en el cosmos, lejísimos para nosotros</h2>
+        <p class="lede">Un año luz son unos 9.46 billones de kilómetros. Elige cómo viajar y mira cuánto tardarías. La última columna indica en qué año salió la luz que hoy llega de cada planeta.</p>
+      </div>
+      <div class="vehicles" role="group" aria-label="Elige vehículo" data-reveal>
+        <button data-v="light" class="on"><b>Luz</b><span>300,000 km/s</span></button>
+        <button data-v="starshot"><b>Breakthrough Starshot</b><span>20 % de la luz · propuesta</span></button>
+        <button data-v="parker"><b>Sonda Parker</b><span>192 km/s · lo más rápido hecho</span></button>
+        <button data-v="voyager"><b>Voyager 1</b><span>17 km/s · saliendo del Sistema Solar</span></button>
+      </div>
+      <div class="dist" id="dist" data-reveal></div>
+    </section>
+
+    <!-- ============ 06 METODOS ============ -->
+    <section id="metodos" class="section">
+      <div class="section-head" data-reveal>
+        <span class="kicker">06 · Cómo se descubren</span>
+        <h2>Cazar sombras y bamboleos</h2>
+        <p class="lede">Casi ningún exoplaneta se ha fotografiado directamente: brillan miles de millones de veces menos que su estrella. Se delatan por lo que le hacen a ella.</p>
+      </div>
+      <div class="methods">
+        <article class="method" data-reveal>
+          <div class="method-canvas"><canvas id="transit-canvas" role="img" aria-label="Animación del método de tránsito: el planeta cruza la estrella y la curva de luz baja"></canvas></div>
+          <h3>Tránsito</h3>
+          <p>Cuando el planeta pasa frente a su estrella, bloquea un poco de su luz. La profundidad de la caída revela su tamaño y el tiempo entre caídas, su año. Así trabajaron Kepler y TESS. <small>La caída está exagerada para que se vea: la Tierra frente al Sol la reduciría solo un 0.008 %.</small></p>
+        </article>
+        <article class="method" data-reveal style="--d:.1s">
+          <div class="method-canvas"><canvas id="rv-canvas" role="img" aria-label="Animación del método de velocidad radial: la estrella se bambolea y sus líneas espectrales se desplazan al azul y al rojo"></canvas></div>
+          <h3>Velocidad radial</h3>
+          <p>El planeta también atrae a su estrella y la hace bambolear. Cuando se acerca, su luz se corre al azul; cuando se aleja, al rojo. Así se hallaron Proxima b, Teegarden b y Ross 128 b. <small>Da la masa mínima del planeta, no su tamaño.</small></p>
+        </article>
+      </div>
+    </section>
+
+    <!-- ============ 07 VIDA ============ -->
+    <section id="vida" class="section">
+      <div class="section-head" data-reveal>
+        <span class="kicker">07 · Buscando señales de vida</span>
+        <h2>Leer el aire de otro mundo</h2>
+        <p class="lede">Durante un tránsito, una pizca de luz estelar atraviesa la atmósfera del planeta. Cada molécula absorbe colores específicos y deja su huella en el espectro. El James Webb ya puede leer esas huellas en algunos de estos mundos.</p>
+      </div>
+      <figure class="spectrum" data-reveal>
+        <div class="spectrum-plot" id="spectrum"></div>
+        <figcaption>Esquema ilustrativo de un espectro de transmisión. Las bandas marcadas son longitudes de onda reales donde absorbe cada molécula.</figcaption>
+      </figure>
+      <div class="molecules" id="molecules"></div>
+      <h3 class="subhead" data-reveal>Lo que ha visto el James Webb</h3>
+      <div class="jwst">
+        <article class="jw" data-reveal>
+          <header><h4>K2-18 b</h4><span class="badge warm">Metano y CO₂</span></header>
+          <p>En 2023 detectó metano y dióxido de carbono. En 2023 y 2025 un equipo propuso sulfuro de dimetilo, una posible biofirma. Otros análisis no encuentran evidencia concluyente y la señal sigue en disputa.</p>
+        </article>
+        <article class="jw" data-reveal style="--d:.06s">
+          <header><h4>LHS 1140 b</h4><span class="badge life">Posible mundo de agua</span></header>
+          <p>El Webb descartó una atmósfera dominada por hidrógeno y encontró indicios tentativos de nitrógeno. Su baja densidad apunta a un planeta con mucha agua, quizá helado con un océano frente a su estrella.</p>
+        </article>
+        <article class="jw" data-reveal style="--d:.12s">
+          <header><h4>TRAPPIST-1 e</h4><span class="badge cool">Sin veredicto</span></header>
+          <p>Las primeras observaciones descartan una atmósfera primaria rica en hidrógeno, pero no una secundaria de nitrógeno. La actividad de la estrella contamina la señal y hacen falta más tránsitos.</p>
+        </article>
+        <article class="jw" data-reveal style="--d:.18s">
+          <header><h4>TRAPPIST-1 b y c</h4><span class="badge hot">Roca desnuda</span></header>
+          <p>Sus curvas de fase térmica, publicadas en 2026, son las de superficies rocosas sin atmósfera densa. Son los más cercanos a la estrella y reciben mucha más radiación.</p>
+        </article>
+      </div>
+    </section>
+
+    <!-- ============ 08 HISTORIA ============ -->
+    <section id="historia" class="section">
+      <div class="section-head" data-reveal>
+        <span class="kicker">08 · Tres décadas de hallazgos</span>
+        <h2>De 2 a 6,366 mundos</h2>
+        <p class="lede">Exoplanetas confirmados según su año de descubrimiento. Los picos de 2014 y 2016 son validaciones masivas de candidatos del telescopio Kepler.</p>
+      </div>
+      <figure class="chart" data-reveal>
+        <div class="chart-plot" id="chart"></div>
+        <figcaption>Fuente: NASA Exoplanet Archive, consultado el 22 de septiembre de 2026. 2026 incluye solo lo confirmado hasta esa fecha.
+          <details class="chart-table"><summary>Ver como tabla</summary><div id="chart-table"></div></details>
+        </figcaption>
+      </figure>
+      <ol class="timeline" id="timeline">
+        <li data-reveal><b>1992</b><span>Primeros exoplanetas confirmados, alrededor de un púlsar.</span></li>
+        <li data-reveal><b>1995</b><span>51 Pegasi b, el primero alrededor de una estrella como el Sol. Premio Nobel de Física 2019.</span></li>
+        <li data-reveal><b>2009</b><span>Despega Kepler, que vigila 150,000 estrellas a la vez.</span></li>
+        <li data-reveal><b>2011</b><span>Kepler-22 b, primer planeta de Kepler en zona habitable.</span></li>
+        <li data-reveal><b>2014</b><span>Kepler-186 f, primer mundo del tamaño de la Tierra en zona habitable.</span></li>
+        <li data-reveal><b>2016</b><span>Proxima b, en la estrella más cercana al Sol.</span></li>
+        <li data-reveal><b>2017</b><span>Se anuncian los siete planetas de TRAPPIST-1.</span></li>
+        <li data-reveal><b>2018</b><span>Despega TESS para rastrear casi todo el cielo.</span></li>
+        <li data-reveal><b>2021</b><span>Despega el telescopio espacial James Webb.</span></li>
+        <li data-reveal><b>2023</b><span>El Webb detecta metano y CO₂ en K2-18 b.</span></li>
+        <li data-reveal><b>2026</b><span>Despega el telescopio Roman. El recuento supera los 6,300 mundos.</span></li>
+      </ol>
+    </section>
+
+    <!-- ============ 09 FUTURO ============ -->
+    <section id="futuro" class="section">
+      <div class="section-head" data-reveal>
+        <span class="kicker">09 · Lo que viene</span>
+        <h2>La próxima generación de cazadores</h2>
+        <p class="lede">La meta es fotografiar una Tierra alrededor de una estrella como el Sol y analizar su aire en busca de oxígeno, ozono o metano.</p>
+      </div>
+      <div class="missions">
+        <article class="mission" data-reveal><span class="m-status live">En operación</span><h3>James Webb</h3><p class="m-date">NASA · ESA · CSA · desde 2022</p><p>Espectros infrarrojos de atmósferas de planetas templados y rocosos.</p></article>
+        <article class="mission" data-reveal style="--d:.06s"><span class="m-status live">Lanzado el 30 ago 2026</span><h3>Nancy Grace Roman</h3><p class="m-date">NASA</p><p>Hará un censo de miles de planetas por microlente y probará un coronógrafo capaz de ocultar la luz estelar.</p></article>
+        <article class="mission" data-reveal style="--d:.12s"><span class="m-status soon">Previsto dic 2026</span><h3>PLATO</h3><p class="m-date">ESA</p><p>Con 26 cámaras vigilará unas 200,000 estrellas buscando Tierras en la zona habitable de estrellas parecidas al Sol.</p></article>
+        <article class="mission" data-reveal style="--d:.18s"><span class="m-status soon">Previsto 2029</span><h3>Ariel</h3><p class="m-date">ESA</p><p>Estudiará la química de las atmósferas de cerca de mil exoplanetas.</p></article>
+        <article class="mission" data-reveal style="--d:.24s"><span class="m-status soon">Primera luz 2029</span><h3>Extremely Large Telescope</h3><p class="m-date">ESO · Chile · ciencia desde 2030</p><p>Un espejo de 39 metros con el que se intentará captar la luz de planetas rocosos cercanos, como Proxima b.</p></article>
+        <article class="mission" data-reveal style="--d:.3s"><span class="m-status far">Década de 2040</span><h3>Habitable Worlds Observatory</h3><p class="m-date">NASA · en diseño</p><p>Diseñado para fotografiar al menos 25 Tierras potenciales y buscar biofirmas en su luz.</p></article>
+      </div>
+      <blockquote class="closing" data-reveal>
+        <p>Por primera vez en la historia, la pregunta <em>¿estamos solos?</em> tiene un plan de observación.</p>
+      </blockquote>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <div class="footer-grid">
+      <div>
+        <p class="brand foot"><svg viewBox="0 0 40 40" aria-hidden="true"><circle cx="20" cy="20" r="9" /><ellipse cx="20" cy="20" rx="18" ry="6" transform="rotate(-22 20 20)" /></svg><span>Otras Tierras</span></p>
+        <p class="muted">Todas las imágenes de planetas son recreaciones artísticas generadas por código en tiempo real. Ningún telescopio ha visto todavía la superficie de estos mundos.</p>
+      </div>
+      <div>
+        <h4>Fuentes</h4>
+        <ul>
+          <li><a href="https://exoplanetarchive.ipac.caltech.edu/" target="_blank" rel="noopener">NASA Exoplanet Archive</a> (22 sep 2026)</li>
+          <li><a href="https://phl.upr.edu/hwc" target="_blank" rel="noopener">PHL · Habitable Worlds Catalog</a></li>
+          <li><a href="https://science.nasa.gov/exoplanets/" target="_blank" rel="noopener">NASA Science · Exoplanets</a></li>
+          <li><a href="https://www.esa.int/Science_Exploration/Space_Science/Plato" target="_blank" rel="noopener">ESA · PLATO</a></li>
+          <li><a href="https://elt.eso.org/" target="_blank" rel="noopener">ESO · Extremely Large Telescope</a></li>
+          <li>Kopparapu et al. (2014), límites de la zona habitable</li>
+        </ul>
+      </div>
+      <div>
+        <h4>Técnica</h4>
+        <p class="muted">WebGL2 escrito a mano: esferas analíticas, ruido procedural y antialiasing por derivadas. Sin imágenes rasterizadas, así se ve nítido en 4K, 8K y pantallas Retina. La resolución se adapta sola para mantener la fluidez.</p>
+      </div>
+    </div>
+  </footer>
+
+  <!-- ============ EXPEDIENTE (modal) ============ -->
+  <div class="detail" id="detail" role="dialog" aria-modal="true" aria-labelledby="d-name" hidden>
+    <button class="d-close" id="d-close" aria-label="Cerrar expediente"><span></span><span></span></button>
+    <button class="d-nav prev" id="d-prev" aria-label="Planeta anterior"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></button>
+    <button class="d-nav next" id="d-next" aria-label="Planeta siguiente"><svg viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg></button>
+    <div class="d-grid" data-lenis-prevent>
+      <div class="d-stage">
+        <div class="d-planet" id="d-planet" role="img"></div>
+        <p class="d-hint">Arrastra para girarlo</p>
+        <div class="d-compare" aria-label="Comparación de tamaño con la Tierra">
+          <div class="d-cmp"><div class="d-cmp-planet" id="d-cmp-p"></div><span id="d-cmp-name"></span></div>
+          <div class="d-cmp"><div class="d-cmp-planet" id="d-cmp-e"></div><span>Tierra · 1.00 R⊕</span></div>
+        </div>
+      </div>
+      <div class="d-info" id="d-info" data-lenis-prevent>
+        <p class="kicker" id="d-kicker"></p>
+        <h2 id="d-name"></h2>
+        <p class="d-host" id="d-host"></p>
+        <div class="d-esi">
+          <div class="d-esi-bar"><i id="d-esi-fill"></i></div>
+          <span id="d-esi-val"></span>
+        </div>
+        <p class="d-blurb" id="d-blurb"></p>
+        <dl class="d-stats" id="d-stats"></dl>
+        <div class="d-weight" id="d-weight">
+          <label for="d-kg">Si en la Tierra pesas</label>
+          <input id="d-kg" type="number" min="1" max="500" value="70" inputmode="numeric"> <span>kg,</span>
+          <span>allí pesarías <b id="d-kg-out"></b></span>
+          <small id="d-g-note"></small>
+        </div>
+        <ul class="d-facts" id="d-facts"></ul>
+      </div>
+    </div>
+  </div>
+
+  <div class="hud" id="hud" aria-live="off">
+    <span id="hud-res">—</span><span class="sep">·</span><span id="hud-fps">—</span>
+    <button id="hud-mode" title="Cambiar modo de resolución">AUTO</button>
+    <button id="hud-motion" title="Pausar o reanudar el movimiento" aria-pressed="false">Movimiento</button>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/lenis@1.1.13/dist/lenis.min.js" defer></script>
+  <script src="js/data.js" defer></script>
+  <script src="js/shaders.js" defer></script>
+  <script src="js/engine.js" defer></script>
+  <script src="js/diagrams.js" defer></script>
+  <script src="js/main.js" defer></script>
+</body>
+</html>
