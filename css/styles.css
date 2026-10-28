@@ -125,49 +125,76 @@ ul { list-style: none; }
 }
 
 /* ── HERO ── */
+/* En computadora la foto llena todo el cuadro y las caras ocupan casi
+   toda la altura, así que el logo y los botones van abajo a la derecha,
+   sobre los cuerpos. En celular van abajo al centro (ver @media 768). */
 .hero {
   position: relative;
   min-height: 100vh;
+  min-height: 100svh;
   display: flex;
-  align-items: center;
-  justify-content: center;
+  align-items: flex-end;
+  justify-content: flex-end;
   overflow: hidden;
 }
 
 .hero-bg {
   position: absolute;
   inset: 0;
+  overflow: hidden;
+  background: var(--black);
 }
 
+/* Copia desenfocada de 1 KB: se ve mientras carga la foto y, en
+   tablets, rellena los lados que le sobran. */
+.hero-bg::before {
+  content: '';
+  position: absolute;
+  inset: -80px;
+  background: url('../assets/hero-banda-blur.webp') center / cover;
+  filter: blur(40px) grayscale(0.3) brightness(0.95);
+}
+
+/* Se recorta el follaje de arriba: la foto mide 804 px de ancho y el
+   pelo de los de atrás está a 285 px, así que queda 75 px abajo del
+   borde. max() evita que se descubra el borde de abajo. */
 .hero-photo {
+  position: absolute;
+  inset: 0;
   width: 100%;
   height: 100%;
   object-fit: cover;
-  object-position: center top;
+  object-position: 50% max(calc(75px - 35.4vw), 100%);
   filter: grayscale(0.3) contrast(1.05);
 }
 
 .hero-overlay {
   position: absolute;
   inset: 0;
-  background: linear-gradient(
-    to bottom,
-    rgba(245,239,224,0.15) 0%,
-    rgba(245,239,224,0.45) 50%,
-    rgba(245,239,224,0.9) 100%
-  );
+  background:
+    radial-gradient(ellipse 55% 60% at 82% 88%, rgba(245,239,224,0.82), rgba(245,239,224,0) 100%),
+    linear-gradient(
+      to bottom,
+      rgba(245,239,224,0) 0%,
+      rgba(245,239,224,0) 70%,
+      rgba(245,239,224,0.6) 90%,
+      var(--bg) 100%
+    );
 }
 
 .hero-content {
   position: relative;
   z-index: 2;
   text-align: center;
-  padding: 0 24px;
-  padding-top: 80px;
+  padding: 80px 5vw clamp(40px, 8vh, 90px) 24px;
 }
 
+/* Sobre el fondo crema el botón blanco no se veía. */
+.hero .btn-outline { color: var(--black); border-color: var(--black); }
+.hero .btn-outline:hover { background: var(--black); color: var(--white); }
+
 .hero-logo {
-  width: clamp(280px, 50vw, 600px);
+  width: clamp(300px, 30vw, 520px);
   margin: 0 auto 24px;
   filter: drop-shadow(0 4px 24px rgba(0,0,0,0.15));
 }
@@ -1017,9 +1044,10 @@ ul { list-style: none; }
 .footer-copy { color: #555 !important; font-size: 0.7rem !important; }
 
 /* ── SPARKS ── */
+/* Arriba a la derecha, sobre la pared: abajo están el logo y los botones. */
 .hero-sticker {
   position: absolute;
-  bottom: 80px;
+  top: 96px;
   right: 40px;
   width: 100px;
   animation: float 4s ease-in-out infinite;
@@ -1537,7 +1565,7 @@ ul { list-style: none; }
   .nav-links { gap: 24px; }
 
   /* Hero */
-  .hero-logo { width: clamp(240px, 44vw, 500px); }
+  .hero-logo { width: clamp(240px, 30vw, 500px); }
   .hero-sticker { width: 88px; right: 28px; }
 
   /* Banda */
@@ -1600,14 +1628,37 @@ ul { list-style: none; }
   .section { padding: 60px 18px; }
   .section-title { font-size: clamp(2rem, 8vw, 3.5rem); }
 
-  /* ── Hero ── */
-  .hero-content { padding-top: 70px; padding-left: 16px; padding-right: 16px; }
-  .hero-logo { width: clamp(220px, 72vw, 420px); margin-bottom: 18px; }
+  /* ── Hero ──
+     La foto es vertical como la pantalla: va centrada a toda altura,
+     subida un 12% para que las caras queden arriba del logo. */
+  .hero { justify-content: center; }
+  .hero-photo {
+    inset: auto;
+    top: -12%;
+    left: 50%;
+    width: auto;
+    max-width: none;
+    transform: translateX(-50%);
+    -webkit-mask-image: linear-gradient(to right, transparent, #000 10%, #000 90%, transparent);
+            mask-image: linear-gradient(to right, transparent, #000 10%, #000 90%, transparent);
+  }
+  .hero-overlay {
+    background: linear-gradient(
+      to bottom,
+      rgba(245,239,224,0) 0%,
+      rgba(245,239,224,0) 35%,
+      rgba(245,239,224,0.7) 62%,
+      rgba(245,239,224,0.95) 82%,
+      var(--bg) 100%
+    );
+  }
+  .hero-content { padding: 70px 16px clamp(40px, 8vh, 90px); }
+  .hero-logo { width: clamp(200px, min(72vw, calc(97vh - 390px)), 420px); margin-bottom: 18px; }
   .hero-tags { font-size: clamp(0.7rem, 2.8vw, 1rem); letter-spacing: 0.1em; }
   .hero-duration { font-size: 0.8rem; margin-bottom: 24px; }
   .hero-btns { flex-direction: column; align-items: center; gap: 12px; }
   .hero-btns .btn { width: 100%; max-width: 280px; justify-content: center; }
-  .hero-sticker { width: 65px; right: 14px; bottom: 50px; }
+  .hero-sticker { width: 65px; right: 14px; top: 76px; }
 
   /* ── Banda ── */
   .banda { padding-bottom: 50px; }
@@ -1728,9 +1779,9 @@ ul { list-style: none; }
 @media (max-width: 480px) {
 
   /* Hero */
-  .hero-logo { width: 82vw; }
+  .hero-logo { width: clamp(200px, calc(97vh - 390px), 82vw); }
   .hero-tags { font-size: 0.65rem; letter-spacing: 0.06em; }
-  .hero-sticker { width: 55px; right: 10px; bottom: 40px; }
+  .hero-sticker { width: 55px; right: 10px; top: 66px; }
 
   /* Banda — 2 columnas en móvil pequeño */
   .members-grid {
@@ -1773,7 +1824,7 @@ ul { list-style: none; }
   .navbar { padding: 10px 12px; }
   .nav-logo { height: 26px; }
   .section { padding: 48px 14px; }
-  .hero-logo { width: 88vw; }
+  .hero-logo { width: clamp(200px, calc(97vh - 390px), 88vw); }
   .hero-tags { font-size: 0.58rem; }
   .btn { padding: 10px 18px; font-size: 0.85rem; }
   .members-grid { max-width: 280px; gap: 6px; }
