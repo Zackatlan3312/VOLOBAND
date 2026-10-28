@@ -155,6 +155,28 @@ const SHOWS = [
     boletos: 'https://volofest.lavoloband.com',
     boletosTexto: 'VER EL EVENTO'
   },
+  {
+    fecha: '2026-10-30T17:30:00',
+    titulo: 'Concierto Rock Halloween',
+    rol: 'Con Yei Calli · Cerrando la semana de Halloween',
+    lugar: 'FACICO UV · Pasillo principal',
+    direccion: 'Universidad Veracruzana',
+    hora: '5:30 PM · Entrada gratuita',
+    flyer: 'assets/flyer-halloween-facico.jpg',
+    flyerMini: 'assets/flyer-halloween-facico.webp',
+    boletos: ''
+  },
+  {
+    fecha: '2026-11-10T17:00:00',
+    titulo: 'Encuentro de Bandas UV',
+    rol: 'Primera edición · Experiencia LEA · Con Sheriff, Mechanical Man, Allyean, No crush!, Gabyrtt y Estela',
+    lugar: 'Espacio Cultural Mocambo · USBI Veracruz',
+    direccion: 'Av. Ruiz Cortines esq. Juan Pablo II, Boca del Río',
+    hora: '5:00 PM · Sold out (cupo limitado con registro previo)',
+    flyer: 'assets/flyer-encuentro-uv.jpg',
+    flyerMini: 'assets/flyer-encuentro-uv.webp',
+    boletos: ''
+  },
   // Para agregar un show, copia un bloque {} y cambia los datos.
   // Los eventos pasados desaparecen solos.
   // "flyer" y "boletos" se pueden dejar vacíos ('').
@@ -181,8 +203,13 @@ function renderCartelera() {
     return;
   }
 
+  // Se cuentan días de calendario, no bloques de 24 horas: el mismo
+  // día del show dice "¡ES HOY!" aunque falten horas.
+  const hoy = new Date(ahora.getFullYear(), ahora.getMonth(), ahora.getDate());
+
   cont.innerHTML = proximos.map(s => {
-    const dias = Math.ceil((s.date - ahora) / 86400000);
+    const diaShow = new Date(s.date.getFullYear(), s.date.getMonth(), s.date.getDate());
+    const dias = Math.round((diaShow - hoy) / 86400000);
     const countdown = dias === 0 ? '¡ES HOY!' : dias === 1 ? '¡ES MAÑANA!' : `FALTAN ${dias} DÍAS`;
 
     const boletosBtn = s.boletos
